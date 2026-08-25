@@ -21,12 +21,28 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Guards the local save/upload endpoints. Override with an environment
-// variable so a real password never has to live in the repository:
-//   BSS_ADMIN_PASSWORD=yourpassword node server.js
-// Note: editor.js checks the same value in the browser, so this only ever
-// protects this local server — it is not a secret once the page is served.
+// Read .env if present. This repository is public, so the real password must
+// never be committed — .env is gitignored and holds it instead. Written by
+// hand rather than pulled from dotenv to keep the dependency list short.
+(function loadEnv() {
+    const envPath = path.join(__dirname, '.env');
+    if (!fs.existsSync(envPath)) return;
+    for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+        const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
+        if (!m || line.trim().startsWith('#')) continue;
+        const value = m[2].trim().replace(/^["']|["']$/g, '');
+        if (!(m[1] in process.env)) process.env[m[1]] = value;
+    }
+})();
+
+// Guards the local save/upload endpoints. Set it in .env (or inline:
+// BSS_ADMIN_PASSWORD=yourpassword node server.js). The fallback exists only so
+// a fresh clone starts up — it is not a password anyone should keep.
 const ADMIN_PASSWORD = process.env.BSS_ADMIN_PASSWORD || '123456';
+
+if (ADMIN_PASSWORD === '123456') {
+    console.warn('⚠  BSS_ADMIN_PASSWORD ยังไม่ได้ตั้ง — ใช้รหัสเริ่มต้น 123456 อยู่');
+}
 
 const authenticate = (req, res, next) => {
     const password = req.headers['x-admin-password'];
