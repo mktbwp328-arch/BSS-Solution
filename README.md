@@ -72,6 +72,7 @@ BSS_ADMIN_PASSWORD=รหัสผ่านของคุณ
 | `style.css` | สไตล์กลางทั้งเว็บ |
 | `i18n.js` | สลับภาษา TH/EN — **ภาษาไทยใน HTML คือต้นฉบับ** ถ้าเพิ่มข้อความไทยใหม่ ต้องเพิ่มคู่คำแปลในไฟล์นี้ ไม่งั้นโหมด EN จะโชว์ไทย |
 | `footer.html` + `build-footer.js` | Footer กลาง — แก้ที่ `footer.html` แล้วรัน `node build-footer.js` เพื่อปั๊มลงทุกหน้า |
+| `stamp-assets.js` | ต่อท้าย `?v=<hash>` ให้ไฟล์ CSS/JS — **แก้ `style.css` หรือไฟล์ .js เมื่อไหร่ ต้องรัน `node stamp-assets.js` ก่อน push** ไม่งั้นเบราว์เซอร์ที่เคยเข้าเว็บจะยังใช้ไฟล์เก่าค้างอยู่ |
 | `mobile-nav.js` | เมนูแฮมเบอร์เกอร์ (≤900px) |
 | `video-modal.js` | ป๊อปอัปวิดีโอแนะนำ |
 | `contact-form.js` | ส่งฟอร์มติดต่อเข้า Supabase |
