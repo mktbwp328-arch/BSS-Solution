@@ -1,0 +1,14 @@
+# Source photographs (~44 MB of originals). Only images/works/ is served —
+# these stay in git as the master copies but do not belong in a deploy.
+images/BSS/
+
+# Local-only tooling: the Express editor server cannot run on Vercel
+# (read-only filesystem), and these are not referenced by any page.
+server.js
+build-footer.js
+supabase/
+
+node_modules/
+backups/
+bss.zip
+.claude/

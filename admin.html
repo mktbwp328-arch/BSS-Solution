@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>ระบบจัดการเว็บไซต์ | BSS SOLUTION (1978)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0a192f;
+            --secondary: #ff8c00;
+            --text-light: #e6f1ff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Prompt', sans-serif; }
+        body {
+            background: var(--primary);
+            color: var(--text-light);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .wrap { max-width: 900px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+        header.bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding: 1.25rem 0 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 2rem;
+        }
+        .brand { display: flex; align-items: center; gap: 0.75rem; font-weight: 700; }
+        .brand img { height: 42px; width: auto; border-radius: 6px; }
+        .brand span { color: var(--secondary); }
+        .brand small {
+            display: block; font-size: 0.72rem; font-weight: 400;
+            color: rgba(230,241,255,0.55); letter-spacing: 0.02em;
+        }
+
+        h1 { font-size: clamp(1.4rem, 4vw, 1.9rem); margin-bottom: 0.4rem; }
+        .lede { color: rgba(230,241,255,0.65); margin-bottom: 2rem; font-size: 0.95rem; }
+
+        /* ── Login ─────────────────────────────── */
+        #login {
+            max-width: 380px; margin: 12vh auto 0;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,140,0,0.25);
+            border-radius: 18px; padding: 2.25rem;
+            text-align: center;
+        }
+        #login .lock { font-size: 2rem; color: var(--secondary); margin-bottom: 0.75rem; }
+        #login h2 { font-size: 1.15rem; margin-bottom: 1.5rem; }
+        #login input {
+            width: 100%; padding: 0.85rem 1rem; font-size: 1rem;
+            background: #12233d; color: #fff;
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+            outline: none; margin-bottom: 0.9rem; text-align: center;
+        }
+        #login input:focus { border-color: var(--secondary); }
+        #login button {
+            width: 100%; padding: 0.85rem; font-size: 1rem; font-weight: 600;
+            background: var(--secondary); color: var(--primary);
+            border: 0; border-radius: 10px; cursor: pointer; transition: 0.2s;
+        }
+        #login button:hover { filter: brightness(1.08); }
+        #login .err { color: #ff6b6b; font-size: 0.85rem; min-height: 1.2em; margin-top: 0.75rem; }
+
+        /* ── Page cards ────────────────────────── */
+        .pages { display: grid; gap: 1rem; }
+        .page-card {
+            display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: 14px; padding: 1.25rem 1.5rem;
+            transition: 0.25s;
+        }
+        .page-card:hover { border-color: rgba(255,140,0,0.45); background: rgba(255,255,255,0.06); }
+        .page-icon {
+            width: 46px; height: 46px; flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,140,0,0.14); color: var(--secondary);
+            border-radius: 12px; font-size: 1.1rem;
+        }
+        .page-meta { flex: 1 1 200px; min-width: 0; }
+        .page-meta strong { display: block; font-size: 1.05rem; }
+        .page-meta code {
+            font-size: 0.8rem; color: rgba(230,241,255,0.5);
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+        }
+        .page-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.65rem 1.1rem; border-radius: 9px;
+            font-size: 0.9rem; font-weight: 600; text-decoration: none;
+            border: 1px solid transparent; cursor: pointer; transition: 0.2s;
+            min-height: 44px;
+        }
+        .btn-edit { background: var(--secondary); color: var(--primary); }
+        .btn-edit:hover { filter: brightness(1.08); }
+        .btn-view { background: transparent; color: var(--text-light); border-color: rgba(255,255,255,0.22); }
+        .btn-view:hover { border-color: var(--secondary); color: var(--secondary); }
+        .btn-out { background: transparent; color: #ff8080; border-color: rgba(255,128,128,0.35); }
+        .btn-out:hover { background: rgba(255,128,128,0.12); }
+
+        /* ── How-to ────────────────────────────── */
+        .howto {
+            margin-top: 2.5rem; padding: 1.5rem;
+            background: rgba(255,140,0,0.06);
+            border: 1px solid rgba(255,140,0,0.2);
+            border-radius: 14px;
+        }
+        .howto h2 { font-size: 1rem; color: var(--secondary); margin-bottom: 0.85rem; }
+        .howto ol { margin-left: 1.15rem; font-size: 0.92rem; color: rgba(230,241,255,0.8); }
+        .howto li { margin-bottom: 0.45rem; }
+        .howto .note {
+            margin-top: 1rem; padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.85rem; color: rgba(230,241,255,0.6);
+        }
+
+        .warn {
+            background: rgba(255,140,0,0.09);
+            border: 1px solid rgba(255,140,0,0.45);
+            border-radius: 14px;
+            padding: 1.25rem 1.4rem;
+            margin-bottom: 1.75rem;
+            font-size: 0.92rem;
+            line-height: 1.85;
+        }
+        .warn strong { display: block; color: var(--secondary); margin-bottom: 0.5rem; }
+        .warn p { color: rgba(230,241,255,0.75); }
+        .warn p + p { margin-top: 0.5rem; }
+        .warn code, .lede code {
+            background: rgba(255,255,255,0.08);
+            padding: 1px 6px; border-radius: 5px;
+            font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85em;
+        }
+        body.remote .btn-edit { pointer-events: none; opacity: 0.35; }
+
+        @media (max-width: 560px) {
+            .page-card { padding: 1.1rem; }
+            .page-actions { width: 100%; }
+            .btn { flex: 1 1 auto; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login gate -->
+    <div id="login" hidden>
+        <div class="lock"><i class="fas fa-user-shield"></i></div>
+        <h2>เข้าสู่ระบบผู้ดูแลเว็บไซต์</h2>
+        <input type="password" id="pass" placeholder="กรอกรหัสผ่าน" autocomplete="current-password">
+        <button type="button" id="do-login">เข้าสู่ระบบ</button>
+        <div class="err" id="err"></div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="wrap" id="dash" hidden>
+        <header class="bar">
+            <div class="brand">
+                <img src="logo.png" alt="BSS SOLUTION">
+                <div>
+                    BSS <span>SOLUTION</span> (1978)
+                    <small>ระบบจัดการเว็บไซต์</small>
+                </div>
+            </div>
+            <button type="button" class="btn btn-out" id="logout">
+                <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+            </button>
+        </header>
+
+        <div id="not-local" class="warn" hidden>
+            <strong><i class="fas fa-triangle-exclamation"></i> แก้ไขได้เฉพาะบนเครื่องเท่านั้น</strong>
+            <p>
+                ระบบแก้ไขทำงานโดยเขียนไฟล์ HTML ผ่าน <code>server.js</code> ซึ่งรันบนเครื่องคุณ
+                — โฮสต์อย่าง Vercel เขียนไฟล์ทับไม่ได้ ปุ่มแก้ไขจึงถูกปิดไว้ที่นี่
+            </p>
+            <p>วิธีแก้เนื้อหา: เปิดโปรเจกต์ในเครื่อง → <code>node server.js</code> → แก้ที่
+                <code>localhost:8080/admin.html</code> → <code>git push</code> แล้วเว็บจริงจะอัปเดตเอง</p>
+        </div>
+
+        <h1>เลือกหน้าที่ต้องการแก้ไข</h1>
+        <p class="lede">กด “แก้ไขหน้านี้” เพื่อเปิดหน้าเว็บจริงในโหมดแก้ไข เมื่อกดบันทึกแล้ว ไฟล์ในเครื่องจะถูกอัปเดต จากนั้น <code>git push</code> เพื่อเผยแพร่</p>
+
+        <div class="pages">
+            <div class="page-card">
+                <div class="page-icon"><i class="fas fa-home"></i></div>
+                <div class="page-meta">
+                    <strong>หน้าแรก</strong>
+                    <code>index.html</code>
+                </div>
+                <div class="page-actions">
+                    <a class="btn btn-edit" href="index.html?edit=1"><i class="fas fa-pen"></i> แก้ไขหน้านี้</a>
+                    <a class="btn btn-view" href="index.html" target="_blank" rel="noopener"><i class="fas fa-eye"></i> ดูหน้าเว็บ</a>
+                </div>
+            </div>
+
+            <div class="page-card">
+                <div class="page-icon"><i class="fas fa-building"></i></div>
+                <div class="page-meta">
+                    <strong>เกี่ยวกับเรา</strong>
+                    <code>about.html</code>
+                </div>
+                <div class="page-actions">
+                    <a class="btn btn-edit" href="about.html?edit=1"><i class="fas fa-pen"></i> แก้ไขหน้านี้</a>
+                    <a class="btn btn-view" href="about.html" target="_blank" rel="noopener"><i class="fas fa-eye"></i> ดูหน้าเว็บ</a>
+                </div>
+            </div>
+
+            <div class="page-card">
+                <div class="page-icon"><i class="fas fa-gears"></i></div>
+                <div class="page-meta">
+                    <strong>บริการของเรา</strong>
+                    <code>services.html</code>
+                </div>
+                <div class="page-actions">
+                    <a class="btn btn-edit" href="services.html?edit=1"><i class="fas fa-pen"></i> แก้ไขหน้านี้</a>
+                    <a class="btn btn-view" href="services.html" target="_blank" rel="noopener"><i class="fas fa-eye"></i> ดูหน้าเว็บ</a>
+                </div>
+            </div>
+
+            <div class="page-card">
+                <div class="page-icon"><i class="fas fa-envelope"></i></div>
+                <div class="page-meta">
+                    <strong>ติดต่อเรา</strong>
+                    <code>contact.html</code>
+                </div>
+                <div class="page-actions">
+                    <a class="btn btn-edit" href="contact.html?edit=1"><i class="fas fa-pen"></i> แก้ไขหน้านี้</a>
+                    <a class="btn btn-view" href="contact.html" target="_blank" rel="noopener"><i class="fas fa-eye"></i> ดูหน้าเว็บ</a>
+                </div>
+            </div>
+
+            <div class="page-card">
+                <div class="page-icon"><i class="fas fa-newspaper"></i></div>
+                <div class="page-meta">
+                    <strong>บทความ</strong>
+                    <code>articles.html</code>
+                </div>
+                <div class="page-actions">
+                    <a class="btn btn-edit" href="articles.html?edit=1"><i class="fas fa-pen"></i> แก้ไขหน้านี้</a>
+                    <a class="btn btn-view" href="articles.html" target="_blank" rel="noopener"><i class="fas fa-eye"></i> ดูหน้าเว็บ</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="howto">
+            <h2><i class="fas fa-circle-info"></i> วิธีใช้งาน</h2>
+            <ol>
+                <li>กด <strong>แก้ไขหน้านี้</strong> ระบบจะเปิดหน้าเว็บจริงพร้อมแถบเครื่องมือด้านบน</li>
+                <li>คลิกที่ข้อความเพื่อพิมพ์แก้ได้เลย หรือคลิกที่รูปเพื่ออัปโหลดรูปใหม่</li>
+                <li>กด <strong>บันทึกการแก้ไข (Publish)</strong> ที่แถบด้านบน</li>
+                <li>ไฟล์หน้านั้นจะถูกเขียนทับทันที — รีเฟรชหน้าเว็บก็เห็นผลเลย</li>
+            </ol>
+            <p class="note">
+                ระบบจะสำรองไฟล์เดิมไว้ในโฟลเดอร์ <code>backups/</code> ทุกครั้งก่อนเขียนทับ
+                หากแก้ผิดสามารถกู้คืนจากไฟล์สำรองได้
+            </p>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+        var KEY = 'bss_admin_auth';
+        var PASS = '123456';
+        var login = document.getElementById('login');
+        var dash = document.getElementById('dash');
+
+        function show(authed) {
+            login.hidden = authed;
+            dash.hidden = !authed;
+            if (!authed) document.getElementById('pass').focus();
+        }
+
+        function tryLogin() {
+            var v = document.getElementById('pass').value.trim();
+            if (v === PASS) {
+                try { localStorage.setItem(KEY, PASS); } catch (e) {}
+                show(true);
+            } else {
+                document.getElementById('err').textContent = 'รหัสผ่านไม่ถูกต้อง';
+                document.getElementById('pass').select();
+            }
+        }
+
+        document.getElementById('do-login').addEventListener('click', tryLogin);
+        document.getElementById('pass').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') tryLogin();
+        });
+
+        document.getElementById('logout').addEventListener('click', function () {
+            try { localStorage.removeItem(KEY); } catch (e) {}
+            location.reload();
+        });
+
+        var LOCAL = ["localhost","127.0.0.1","::1",""].indexOf(location.hostname) !== -1
+            || /^192.168./.test(location.hostname);
+        if (!LOCAL) {
+            document.body.classList.add("remote");
+            document.getElementById("not-local").hidden = false;
+        }
+
+        var authed = false;
+        try { authed = localStorage.getItem(KEY) === PASS; } catch (e) {}
+        show(authed);
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+
+# Editor backups created by /api/save at runtime
+backups/
+
+# High-resolution source photographs (~47 MB). The site only serves the
+# optimised copies in images/works/, so these stay local — keep your own
+# backup of this folder, it is not versioned.
+images/BSS/
+
+# Stale archive of the previous site (24 MB, not part of the build)
+bss.zip
+
+# Local tooling / secrets
+.vercel
+.env
+.env.local
+.DS_Store
+Thumbs.db
+
+# Images no page references any more (kept on disk, not versioned)
+/images/1778902107193-137ed8b3-27f3-44ea-971a-7014b842afe1.jpg
+/images/1778902120495-Generated-Image-September-26,-2025---1_28PM.jpg
+/images/1778902132072-download (2).png
+/images/1778902145933-download (4).png
+/images/1779180871970-download (3).png
+/images/article_belts_101.png
+/images/article_maintenance.png
+/images/article_roller_guide.png
+/images/automated_line.png
+/images/client_logo_12.jpg
+/images/clients.png
+/images/conveyor_food.png
+/images/grid_logo_1.jpg
+/images/grid_logo_10.jpg
+/images/grid_logo_11.jpg
+/images/grid_logo_12.jpg
+/images/grid_logo_2.jpg
+/images/grid_logo_3.jpg
+/images/grid_logo_4.jpg
+/images/grid_logo_5.jpg
+/images/grid_logo_6.jpg
+/images/grid_logo_7.jpg
+/images/grid_logo_8.jpg
+/images/grid_logo_9.jpg
+/images/heavy_duty.png
+/images/logo.png
+/images/logo1.png
+/images/logo2.png
+/images/logo3.png
+/images/logo4.png
+/images/logo5.png
+/images/logo_official.png
+/images/recycling_system.png
+/images/roller_conveyor.png
+/images/sorting_system.png
+/images/warehouse_agv.png
+/images/works/recycling-sorting-system.jpg
