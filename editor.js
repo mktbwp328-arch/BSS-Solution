@@ -497,10 +497,16 @@
             saveBtn.style.color = '#0a192f';
         }
 
-        logoutBtn.onclick = () => { 
-            localStorage.removeItem('bss_admin_auth'); 
-            isAdmin = false; 
-            location.reload(); 
+        // Typing is the main way content changes — without this the Publish
+        // button stays disabled and edits can never be saved.
+        document.addEventListener('input', (e) => {
+            if (e.target && e.target.isContentEditable) markUnsaved();
+        }, true);
+
+        logoutBtn.onclick = () => {
+            localStorage.removeItem('bss_admin_auth');
+            isAdmin = false;
+            location.reload();
         };
     }
 
