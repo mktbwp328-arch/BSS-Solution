@@ -792,9 +792,10 @@
             '#bss-lang-switch .bss-lang-label{min-width:1.55em;text-align:left;}' +
             '#bss-lang-switch.bss-lang-floating{position:fixed;top:14px;right:16px;z-index:10000;' +
             'background:rgba(10,25,47,.92);box-shadow:0 4px 14px rgba(0,0,0,.35);}' +
-            // Comfortable thumb target next to the hamburger on touch screens
-            '@media (max-width:768px){#bss-lang-switch{padding:11px 13px;margin-left:auto;}}' +
-            '@media (max-width:480px){#bss-lang-switch{padding:11px;gap:5px;font-size:12px;}}';
+            // Comfortable thumb target next to the hamburger on touch screens.
+            // min-height keeps it at 44px however the padding rounds out.
+            '@media (max-width:900px){#bss-lang-switch{padding:11px 13px;margin-left:auto;min-height:44px;}}' +
+            '@media (max-width:480px){#bss-lang-switch{padding:11px;gap:5px;font-size:12px;min-height:44px;}}';
         document.head.appendChild(css);
     }
 

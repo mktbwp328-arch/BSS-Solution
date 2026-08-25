@@ -726,6 +726,39 @@ footer,
     .footer-brand {
         grid-column: 1 / -1;
     }
+
+    /* On a touch screen these links were 22px tall — well under the ~44px a
+       fingertip can hit reliably. The phone, email and LINE links especially:
+       they are the main way a visitor on a phone gets in touch. */
+    .footer-col a,
+    .footer-contact li a {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        line-height: 1.45;
+    }
+
+    .footer-col ul {
+        gap: 0;
+    }
+
+    .footer-contact ul {
+        gap: 0.35rem;
+    }
+
+    .footer-contact li {
+        align-items: center;
+        min-height: 44px;
+    }
+
+    .footer-contact li i {
+        margin-top: 0;
+    }
+
+    .footer-social a {
+        width: 44px;
+        height: 44px;
+    }
 }
 
 @media (max-width: 560px) {
