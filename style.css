@@ -940,6 +940,14 @@ nav.nav-open #bss-nav-toggle .bar-bot { transform: translateY(-5px) rotate(-45de
     /* Comfortable touch targets */
     .read-more {
         padding: 0.5rem 0;
+        min-height: 44px;
+    }
+
+    /* Two controls carry their sizing in inline styles, which land a couple of
+       pixels short of a comfortable thumb target on a phone. */
+    #btn-map-3d,
+    nav .nav-links a[href="contact.html"][style] {
+        min-height: 44px;
     }
 
 }
