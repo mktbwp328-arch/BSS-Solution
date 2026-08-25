@@ -727,38 +727,6 @@ footer,
         grid-column: 1 / -1;
     }
 
-    /* On a touch screen these links were 22px tall — well under the ~44px a
-       fingertip can hit reliably. The phone, email and LINE links especially:
-       they are the main way a visitor on a phone gets in touch. */
-    .footer-col a,
-    .footer-contact li a {
-        display: flex;
-        align-items: center;
-        min-height: 44px;
-        line-height: 1.45;
-    }
-
-    .footer-col ul {
-        gap: 0;
-    }
-
-    .footer-contact ul {
-        gap: 0.35rem;
-    }
-
-    .footer-contact li {
-        align-items: center;
-        min-height: 44px;
-    }
-
-    .footer-contact li i {
-        margin-top: 0;
-    }
-
-    .footer-social a {
-        width: 44px;
-        height: 44px;
-    }
 }
 
 @media (max-width: 560px) {
@@ -940,16 +908,61 @@ nav.nav-open #bss-nav-toggle .bar-bot { transform: translateY(-5px) rotate(-45de
     /* Comfortable touch targets */
     .read-more {
         padding: 0.5rem 0;
+    }
+
+}
+
+/* --- Touch targets -------------------------------------------------------
+   Keyed to the pointing device rather than the window width. Sizing these by
+   breakpoint kept missing tablets: a 820px iPad and a 912px Surface are as
+   much fingertip devices as a phone, but sat above the mobile breakpoint and
+   kept their 22-26px desktop targets. The width clause is a fallback for
+   browsers that do not report pointer type. ~44px is the size a fingertip
+   hits reliably; below that people miss and hit the neighbouring link. */
+@media (pointer: coarse), (max-width: 1024px) {
+
+    /* The phone, email and LINE links here are how a visitor on a phone
+       actually makes contact — they were the worst offenders at 22px. */
+    .footer-col a,
+    .footer-contact li a {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        line-height: 1.45;
+    }
+
+    .footer-col ul { gap: 0; }
+    .footer-contact ul { gap: 0.35rem; }
+
+    .footer-contact li {
+        align-items: center;
         min-height: 44px;
     }
 
-    /* Two controls carry their sizing in inline styles, which land a couple of
-       pixels short of a comfortable thumb target on a phone. */
+    .footer-contact li i { margin-top: 0; }
+
+    .footer-social a {
+        width: 44px;
+        height: 44px;
+    }
+
+    .read-more {
+        min-height: 44px;
+        padding: 0.5rem 0;
+    }
+
+    .crumb a,
+    .contact-hero .crumb a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+    }
+
+    /* These two carry their sizing in inline styles and land a few pixels short. */
     #btn-map-3d,
     nav .nav-links a[href="contact.html"][style] {
         min-height: 44px;
     }
-
 }
 
 /* --- Small phone (<=480px) ---------------------------------------------- */
