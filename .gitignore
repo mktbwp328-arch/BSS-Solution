@@ -13,6 +13,7 @@ images/BSS/
 bss.zip
 
 # Local tooling / secrets
+_push_*
 .vercel
 .env
 .env.local
