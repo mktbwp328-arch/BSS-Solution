@@ -80,6 +80,13 @@
         .crumb a { color: rgba(230,241,255,0.7); text-decoration: none; }
         .crumb a:hover { color: var(--secondary); }
         .crumb span { color: var(--secondary); }
+        @media (max-width: 900px) {
+            .crumb a, .contact-hero .crumb a {
+                display: inline-flex;
+                align-items: center;
+                min-height: 44px;
+            }
+        }
 
         /* ── Hero: copy left, photo panel right ────────────────── */
         .svc-hero {
