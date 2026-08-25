@@ -963,6 +963,20 @@ nav.nav-open #bss-nav-toggle .bar-bot { transform: translateY(-5px) rotate(-45de
     nav .nav-links a[href="contact.html"][style] {
         min-height: 44px;
     }
+
+    /* Between 900px and 1024px the horizontal desktop nav is still in use —
+       tablets in landscape land here — and its links were 21px. Keep the bar
+       horizontal, just make each link tall enough to hit. */
+    body > nav .nav-links a,
+    #bss-lang-switch {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+    }
+
+    #bss-lang-switch {
+        display: inline-flex;
+    }
 }
 
 /* --- Small phone (<=480px) ---------------------------------------------- */
