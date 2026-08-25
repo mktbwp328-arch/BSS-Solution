@@ -31,4 +31,4 @@ Allow: /
 User-agent: Applebot-Extended
 Allow: /
 
-Sitemap: https://www.bsssolution1978.com/sitemap.xml
+Sitemap: https://bsssolution1978.vercel.app/sitemap.xml

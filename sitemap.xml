@@ -3,43 +3,43 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 
   <url>
-    <loc>https://www.bsssolution1978.com/</loc>
+    <loc>https://bsssolution1978.vercel.app/</loc>
     <lastmod>2026-08-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://www.bsssolution1978.com/images/hero.png</image:loc>
+      <image:loc>https://bsssolution1978.vercel.app/images/hero.png</image:loc>
       <image:title>ระบบสายพานลำเลียงในโรงงานอุตสาหกรรม โดย BSS SOLUTION (1978)</image:title>
     </image:image>
   </url>
 
   <url>
-    <loc>https://www.bsssolution1978.com/about.html</loc>
+    <loc>https://bsssolution1978.vercel.app/about.html</loc>
     <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://www.bsssolution1978.com/services.html</loc>
+    <loc>https://bsssolution1978.vercel.app/services.html</loc>
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
     <image:image>
-      <image:loc>https://www.bsssolution1978.com/images/works/conveyor-company-chonburi.jpg</image:loc>
+      <image:loc>https://bsssolution1978.vercel.app/images/works/conveyor-company-chonburi.jpg</image:loc>
       <image:title>บริการรับออกแบบติดตั้งระบบสายพานลำเลียง Conveyor สมุทรปราการ</image:title>
     </image:image>
   </url>
 
   <url>
-    <loc>https://www.bsssolution1978.com/contact.html</loc>
+    <loc>https://bsssolution1978.vercel.app/contact.html</loc>
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://www.bsssolution1978.com/articles.html</loc>
+    <loc>https://bsssolution1978.vercel.app/articles.html</loc>
     <lastmod>2026-08-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

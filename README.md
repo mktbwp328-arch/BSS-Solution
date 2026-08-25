@@ -76,8 +76,17 @@ Vercel import จาก GitHub repo นี้โดยตรง — ไม่ต
 - JSON-LD: LocalBusiness, Service, FAQPage, ContactPage, BreadcrumbList
 - `sitemap.xml`, `robots.txt` (เปิดให้ AI crawler อย่าง GPTBot, PerplexityBot, ClaudeBot)
 
-⚠️ ถ้าเปลี่ยนโดเมน ต้องแก้ `canonical`, `og:url` ในทุกหน้า และใน `sitemap.xml` / `robots.txt`
-(ปัจจุบันตั้งเป็น `https://www.bsssolution1978.com`)
+## เปลี่ยนโดเมน
+
+URL แบบเต็มทุกที่ (canonical, og:url, JSON-LD `@id`, sitemap.xml, robots.txt)
+ต้องชี้โดเมนเดียวกันทั้งหมด ไม่งั้น Google จะไม่รู้ว่าหน้าจริงอยู่ที่ไหน
+เปลี่ยนทีเดียวจบด้วย:
+
+```bash
+node set-domain.js https://www.bsssolution1978.com
+```
+
+ปัจจุบันชี้ที่ `https://bsssolution1978.vercel.app`
 
 ## ที่ยังไม่ได้ทำ
 
