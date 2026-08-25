@@ -36,13 +36,13 @@
       ]
     },
     {
-      "source": "/(.*)\\.(css|js|png|jpg|jpeg|svg|webp|ico)",
+      "source": "/(.*)\\.(png|jpg|jpeg|svg|webp|ico)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=604800, stale-while-revalidate=86400" }
       ]
     },
     {
-      "source": "/editor.js",
+      "source": "/(.*)\\.(css|js)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
