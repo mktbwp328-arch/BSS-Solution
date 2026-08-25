@@ -11,10 +11,15 @@
 
 const crypto = require('crypto');
 
-const REPO = process.env.GITHUB_REPO || 'mktbwp328-arch/BSS-Solution';
-const BRANCH = process.env.GITHUB_BRANCH || 'main';
-const TOKEN = process.env.GITHUB_TOKEN || '';
-const PASSWORD = process.env.BSS_ADMIN_PASSWORD || '';
+// Trim every value: pasting into the Vercel dashboard very easily carries a
+// trailing newline or space, which silently turns into a password nobody can
+// type and a token GitHub rejects.
+const env = (name, fallback) => (process.env[name] || fallback || '').trim();
+
+const REPO = env('GITHUB_REPO', 'mktbwp328-arch/BSS-Solution');
+const BRANCH = env('GITHUB_BRANCH', 'main');
+const TOKEN = env('GITHUB_TOKEN');
+const PASSWORD = env('BSS_ADMIN_PASSWORD');
 
 // Only these may be rewritten. Without an allowlist the endpoint would let a
 // caller commit anything at all into the repository.
