@@ -17,6 +17,9 @@ module.exports = (req, res) => {
     };
 
     res.status(200).json({
+        // Which commit this deployment was built from. The editor polls it
+        // after saving so it can say "it is live now" instead of guessing.
+        deployedCommit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) || null,
         remoteEditing: isConfigured(),
         hasToken: Boolean(process.env.GITHUB_TOKEN),
         hasPassword: Boolean(process.env.BSS_ADMIN_PASSWORD),

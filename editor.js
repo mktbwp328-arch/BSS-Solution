@@ -515,7 +515,11 @@
                         : '<i class="fas fa-check-circle"></i> บันทึกแล้ว — กำลังอัปเดตเว็บ';
                     saveBtn.style.background = '#2ecc71';
                     saveBtn.style.color = '#fff';
-                    if (!IS_LOCAL) showDeployNotice();
+                    if (!IS_LOCAL) {
+                        let commit = null;
+                        try { commit = (await response.clone().json()).commit; } catch (e) {}
+                        showDeployNotice(commit);
+                    }
                     setTimeout(() => {
                         saveBtn.style.background = '#ff8c00';
                         saveBtn.style.color = '#0a192f';
@@ -590,7 +594,7 @@
         });
     }
 
-    function showDeployNotice() {
+    function deployNoticeBox() {
         let box = document.getElementById('bss-deploy-notice');
         if (!box) {
             box = document.createElement('div');
@@ -602,11 +606,51 @@
                 'box-shadow:0 18px 40px rgba(0,0,0,.45)';
             document.body.appendChild(box);
         }
-        box.innerHTML = '<strong style="color:#ff8c00">บันทึกเข้าระบบแล้ว</strong><br>' +
-            'Vercel กำลัง deploy หน้าเว็บจริงจะอัปเดตในราว 1 นาที ' +
-            'รีเฟรชหน้าอีกครั้งเพื่อดูผลครับ';
-        clearTimeout(showDeployNotice._t);
-        showDeployNotice._t = setTimeout(() => box.remove(), 15000);
+        return box;
+    }
+
+    // Publishing commits to GitHub, which Vercel then deploys — about 25
+    // seconds in practice. Rather than quote a guess, watch for the deployment
+    // that carries this commit and say the moment it is actually live.
+    async function showDeployNotice(commit) {
+        const box = deployNoticeBox();
+        const started = Date.now();
+        const tick = () => Math.round((Date.now() - started) / 1000);
+
+        const waiting = () => {
+            box.innerHTML = '<strong style="color:#ff8c00">บันทึกแล้ว กำลังอัปเดตเว็บ…</strong><br>' +
+                'ผ่านไป ' + tick() + ' วินาที (ปกติราว 25 วินาที)<br>' +
+                '<span style="opacity:.7">ปิดหน้านี้ได้เลย การอัปเดตทำงานต่อเอง</span>';
+        };
+        waiting();
+
+        if (!commit) { setTimeout(() => box.remove(), 20000); return; }
+
+        const timer = setInterval(waiting, 1000);
+        const deadline = Date.now() + 180000;
+
+        while (Date.now() < deadline) {
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+                const s = await (await fetch('/api/status?t=' + Date.now(), { cache: 'no-store' })).json();
+                if (s.deployedCommit === commit) {
+                    clearInterval(timer);
+                    box.innerHTML = '<strong style="color:#2ecc71">เผยแพร่เรียบร้อยแล้ว</strong><br>' +
+                        'ใช้เวลา ' + tick() + ' วินาที — หน้าเว็บจริงอัปเดตแล้ว<br>' +
+                        '<button type="button" style="margin-top:.6rem;padding:.5rem .9rem;border:0;' +
+                        'border-radius:8px;background:#ff8c00;color:#0a192f;font-weight:600;cursor:pointer;' +
+                        'font-family:inherit">ดูหน้าเว็บจริง</button>';
+                    box.querySelector('button').onclick = () => {
+                        location.href = location.pathname;
+                    };
+                    return;
+                }
+            } catch (e) { /* keep waiting — a deploy swap can briefly 503 */ }
+        }
+
+        clearInterval(timer);
+        box.innerHTML = '<strong style="color:#ff8c00">บันทึกแล้ว</strong><br>' +
+            'แต่ยังตรวจไม่พบว่า deploy เสร็จ ลองรีเฟรชหน้าเว็บจริงอีกสักครู่ครับ';
     }
 
     function enableEditing() {
