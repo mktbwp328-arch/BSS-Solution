@@ -25,16 +25,39 @@ node server.js
 
 ## แก้ไขเนื้อหา
 
-**ระบบแก้ไขทำงานเฉพาะบนเครื่อง** — `server.js` เขียนไฟล์ HTML ทับลงดิสก์ ซึ่งโฮสต์อย่าง
-Vercel ทำไม่ได้ (filesystem เป็น read-only) `editor.js` จึงปิดตัวเองอัตโนมัติเมื่อไม่ได้รันที่ localhost
+แก้ได้ 2 ทาง ใช้หน้า `admin.html` เหมือนกัน ต่างกันแค่ปลายทางที่บันทึก
 
-ขั้นตอน:
+### แก้จากเว็บจริง (แนะนำ)
+
+https://bsssolution1978.vercel.app/admin.html
+
+Vercel เขียนไฟล์ทับไม่ได้ (filesystem เป็น read-only) ระบบจึงใช้วิธี commit
+ไฟล์กลับเข้า GitHub ผ่าน `api/publish.js` แล้ว Vercel จะ deploy ให้เอง —
+**หน้าเว็บจริงอัปเดตในราว 1 นาทีหลังกดบันทึก** ทุกครั้งที่บันทึกจะมีประวัติใน
+GitHub ย้อนกลับได้
+
+ต้องตั้ง Environment Variables ใน Vercel ก่อน (Settings → Environment Variables)
+แล้ว **Redeploy หนึ่งครั้ง**:
+
+| ตัวแปร | ค่า |
+|---|---|
+| `BSS_ADMIN_PASSWORD` | รหัสผ่านแอดมิน — **ตั้งให้ยาวอย่างน้อย 16 ตัว** |
+| `GITHUB_TOKEN` | Fine-grained token สิทธิ์ `Contents: Read and write` เฉพาะ repo นี้ |
+| `GITHUB_REPO` | (ไม่ใส่ก็ได้) ค่าเริ่มต้น `mktbwp328-arch/BSS-Solution` |
+| `GITHUB_BRANCH` | (ไม่ใส่ก็ได้) ค่าเริ่มต้น `main` |
+
+เช็คว่าตั้งครบหรือยัง: เปิด `/api/status` — ต้องได้ `"remoteEditing": true`
+
+### แก้บนเครื่อง
 
 1. `node server.js`
-2. เปิด http://localhost:8080/admin.html แล้วเข้าสู่ระบบ
-3. กด “แก้ไขหน้านี้” → แก้ข้อความ/รูป → กด **บันทึกการแก้ไข (Publish)**
-   (ไฟล์เดิมถูกสำรองไว้ที่ `backups/` ทุกครั้งก่อนเขียนทับ)
+2. เปิด http://localhost:8080/admin.html
+3. แก้ → กด **บันทึกการแก้ไข (Publish)** → เขียนไฟล์ลงดิสก์ทันที
+   (สำรองไฟล์เดิมไว้ที่ `backups/` ทุกครั้ง)
 4. `git add -A && git commit -m "..." && git push` → Vercel deploy ให้อัตโนมัติ
+
+รหัสผ่านฝั่ง local ตั้งด้วย `BSS_ADMIN_PASSWORD=yourpassword node server.js`
+(ค่าเริ่มต้น `123456`)
 
 ## โครงสร้างที่ต้องรู้
 
@@ -88,9 +111,15 @@ node set-domain.js https://www.bsssolution1978.com
 
 ปัจจุบันชี้ที่ `https://bsssolution1978.vercel.app`
 
-## ที่ยังไม่ได้ทำ
+## ความปลอดภัยของหน้าแอดมิน
 
-- รหัสผ่านแอดมินฝั่งเซิร์ฟเวอร์ตั้งผ่าน env var ได้แล้ว:
-  `BSS_ADMIN_PASSWORD=yourpassword node server.js` (ค่าเริ่มต้น `123456`)
-- แต่ `editor.js` และ `admin.html` ยังเช็ครหัสฝั่งเบราว์เซอร์ ซึ่ง**ไม่มีทางเป็นความลับ**
-  เพราะโค้ดถูกส่งไปให้ผู้ใช้อยู่แล้ว — ป้องกันได้จริงเฉพาะฝั่ง `server.js` ที่รันในเครื่อง
+- รหัสผ่านตรวจสอบที่ฝั่งเซิร์ฟเวอร์ (`api/_lib.js`) เทียบแบบ constant-time
+  ไม่มีรหัสผ่านอยู่ในไฟล์ที่เบราว์เซอร์โหลด
+- แก้ได้เฉพาะ 5 หน้าใน allowlist กันชื่อไฟล์ที่มี `/` หรือ `..`
+- ปฏิเสธเนื้อหาที่สั้นกว่า 1000 ตัวอักษร หรือไม่ขึ้นต้นด้วย `<!DOCTYPE html>`
+  เพื่อกันหน้าเว็บหายจากการบันทึกที่ผิดพลาด
+- `admin.html` ตั้ง `noindex` ทั้งใน meta และ HTTP header
+
+**สำคัญ:** `/api/publish` เปิดอยู่บนอินเทอร์เน็ตและมีสิทธิ์เขียน repo
+สิ่งเดียวที่กั้นไว้คือ `BSS_ADMIN_PASSWORD` — ตั้งให้ยาวและสุ่ม อย่าใช้ `123456`
+และใช้ fine-grained token ที่จำกัดสิทธิ์เฉพาะ repo นี้เท่านั้น

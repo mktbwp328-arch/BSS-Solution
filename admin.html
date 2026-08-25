@@ -173,18 +173,28 @@
             </button>
         </header>
 
-        <div id="not-local" class="warn" hidden>
-            <strong><i class="fas fa-triangle-exclamation"></i> แก้ไขได้เฉพาะบนเครื่องเท่านั้น</strong>
+        <div id="not-configured" class="warn" hidden>
+            <strong><i class="fas fa-triangle-exclamation"></i> ยังตั้งค่าไม่ครบ</strong>
             <p>
-                ระบบแก้ไขทำงานโดยเขียนไฟล์ HTML ผ่าน <code>server.js</code> ซึ่งรันบนเครื่องคุณ
-                — โฮสต์อย่าง Vercel เขียนไฟล์ทับไม่ได้ ปุ่มแก้ไขจึงถูกปิดไว้ที่นี่
+                การแก้ไขจากเว็บจริงต้องตั้ง Environment Variables ใน Vercel ก่อน —
+                ยังขาด: <span id="missing-vars"></span>
             </p>
-            <p>วิธีแก้เนื้อหา: เปิดโปรเจกต์ในเครื่อง → <code>node server.js</code> → แก้ที่
-                <code>localhost:8080/admin.html</code> → <code>git push</code> แล้วเว็บจริงจะอัปเดตเอง</p>
+            <p>
+                ตั้งที่ Vercel → Project → Settings → Environment Variables แล้ว Redeploy หนึ่งครั้ง
+            </p>
+        </div>
+
+        <div id="remote-mode" class="warn" hidden>
+            <strong><i class="fas fa-cloud-arrow-up"></i> กำลังแก้ไขเว็บจริง</strong>
+            <p>
+                เมื่อกดบันทึก ระบบจะบันทึกเข้า GitHub แล้ว Vercel จะ deploy ให้อัตโนมัติ
+                — หน้าเว็บจริงจะอัปเดตในราว <strong>1 นาที</strong> หลังบันทึก
+            </p>
         </div>
 
         <h1>เลือกหน้าที่ต้องการแก้ไข</h1>
-        <p class="lede">กด “แก้ไขหน้านี้” เพื่อเปิดหน้าเว็บจริงในโหมดแก้ไข เมื่อกดบันทึกแล้ว ไฟล์ในเครื่องจะถูกอัปเดต จากนั้น <code>git push</code> เพื่อเผยแพร่</p>
+        <p class="lede" id="lede-local" hidden>กด “แก้ไขหน้านี้” เพื่อเปิดหน้าเว็บจริงในโหมดแก้ไข เมื่อกดบันทึกแล้ว ไฟล์ในเครื่องจะถูกอัปเดต จากนั้น <code>git push</code> เพื่อเผยแพร่</p>
+        <p class="lede" id="lede-remote" hidden>กด “แก้ไขหน้านี้” เพื่อเปิดหน้าเว็บจริงในโหมดแก้ไข คลิกที่ข้อความเพื่อพิมพ์แก้ คลิกที่รูปเพื่อเปลี่ยนรูป แล้วกดบันทึก</p>
 
         <div class="pages">
             <div class="page-card">
@@ -256,9 +266,13 @@
                 <li>กด <strong>บันทึกการแก้ไข (Publish)</strong> ที่แถบด้านบน</li>
                 <li>ไฟล์หน้านั้นจะถูกเขียนทับทันที — รีเฟรชหน้าเว็บก็เห็นผลเลย</li>
             </ol>
-            <p class="note">
+            <p class="note" id="note-local" hidden>
                 ระบบจะสำรองไฟล์เดิมไว้ในโฟลเดอร์ <code>backups/</code> ทุกครั้งก่อนเขียนทับ
                 หากแก้ผิดสามารถกู้คืนจากไฟล์สำรองได้
+            </p>
+            <p class="note" id="note-remote" hidden>
+                ทุกการบันทึกถูกเก็บเป็นประวัติใน GitHub — ถ้าแก้ผิดสามารถย้อนกลับได้ที่
+                <a href="#" id="commits-link" target="_blank" rel="noopener" style="color:var(--secondary)">ประวัติการแก้ไข</a>
             </p>
         </div>
     </div>
@@ -266,48 +280,101 @@
     <script>
     (function () {
         'use strict';
-        var KEY = 'bss_admin_auth';
-        var PASS = '123456';
+
+        // The password is checked by the server and lives only in an
+        // environment variable. Nothing in this file can reveal it.
+        var KEY = 'bss_admin_pass';
         var login = document.getElementById('login');
         var dash = document.getElementById('dash');
+        var passInput = document.getElementById('pass');
+        var errBox = document.getElementById('err');
+        var loginBtn = document.getElementById('do-login');
+
+        var LOCAL = ['localhost', '127.0.0.1', '::1', ''].indexOf(location.hostname) !== -1
+            || /^192\.168\./.test(location.hostname);
+
+        function stored() {
+            try { return sessionStorage.getItem(KEY) || ''; } catch (e) { return ''; }
+        }
 
         function show(authed) {
             login.hidden = authed;
             dash.hidden = !authed;
-            if (!authed) document.getElementById('pass').focus();
+            if (!authed) passInput.focus();
         }
 
-        function tryLogin() {
-            var v = document.getElementById('pass').value.trim();
-            if (v === PASS) {
-                try { localStorage.setItem(KEY, PASS); } catch (e) {}
-                show(true);
-            } else {
-                document.getElementById('err').textContent = 'รหัสผ่านไม่ถูกต้อง';
-                document.getElementById('pass').select();
+        async function check(password) {
+            var r = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+                body: '{}'
+            });
+            if (r.ok) return { ok: true };
+            var msg = 'รหัสผ่านไม่ถูกต้อง';
+            try { msg = (await r.json()).error || msg; } catch (e) {}
+            return { ok: false, error: msg };
+        }
+
+        async function tryLogin() {
+            var v = passInput.value;
+            if (!v) return;
+            loginBtn.disabled = true;
+            errBox.textContent = 'กำลังตรวจสอบ...';
+            try {
+                var res = await check(v);
+                if (res.ok) {
+                    try { sessionStorage.setItem(KEY, v); } catch (e) {}
+                    errBox.textContent = '';
+                    show(true);
+                } else {
+                    errBox.textContent = res.error;
+                    passInput.select();
+                }
+            } catch (e) {
+                errBox.textContent = 'ติดต่อเซิร์ฟเวอร์ไม่ได้';
+            } finally {
+                loginBtn.disabled = false;
             }
         }
 
-        document.getElementById('do-login').addEventListener('click', tryLogin);
-        document.getElementById('pass').addEventListener('keydown', function (e) {
+        loginBtn.addEventListener('click', tryLogin);
+        passInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') tryLogin();
         });
 
         document.getElementById('logout').addEventListener('click', function () {
-            try { localStorage.removeItem(KEY); } catch (e) {}
+            try {
+                sessionStorage.removeItem(KEY);
+                localStorage.removeItem('bss_admin_auth');
+            } catch (e) {}
             location.reload();
         });
 
-        var LOCAL = ["localhost","127.0.0.1","::1",""].indexOf(location.hostname) !== -1
-            || /^192.168./.test(location.hostname);
-        if (!LOCAL) {
-            document.body.classList.add("remote");
-            document.getElementById("not-local").hidden = false;
-        }
+        // Tell the operator what is missing rather than letting the save fail
+        // with an unexplained error an hour later.
+        fetch('/api/status').then(function (r) { return r.json(); }).then(function (s) {
+            document.getElementById(LOCAL ? 'lede-local' : 'lede-remote').hidden = false;
+            document.getElementById(LOCAL ? 'note-local' : 'note-remote').hidden = false;
 
-        var authed = false;
-        try { authed = localStorage.getItem(KEY) === PASS; } catch (e) {}
-        show(authed);
+            if (LOCAL) return;
+
+            if (s.remoteEditing) {
+                document.getElementById('remote-mode').hidden = false;
+                var link = document.getElementById('commits-link');
+                if (s.repo) link.href = 'https://github.com/' + s.repo + '/commits/' + (s.branch || 'main');
+            } else {
+                document.body.classList.add('remote');
+                var missing = [];
+                if (!s.hasToken) missing.push('GITHUB_TOKEN');
+                if (!s.hasPassword) missing.push('BSS_ADMIN_PASSWORD');
+                document.getElementById('missing-vars').textContent = missing.join(', ') || 'ไม่ทราบ';
+                document.getElementById('not-configured').hidden = false;
+            }
+        }).catch(function () {
+            document.getElementById(LOCAL ? 'lede-local' : 'lede-remote').hidden = false;
+        });
+
+        show(Boolean(stored()));
     })();
     </script>
 </body>

@@ -41,6 +41,16 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, './')));
 
+// Same shape as api/status.js on Vercel, so admin.html has one code path.
+app.get('/api/status', (req, res) => {
+    res.json({ remoteEditing: false, local: true, hasToken: true, hasPassword: true });
+});
+
+// Same shape as api/login.js on Vercel.
+app.post('/api/login', authenticate, (req, res) => {
+    res.json({ ok: true, local: true });
+});
+
 // API to upload image
 app.post('/api/upload', authenticate, upload.single('image'), (req, res) => {
     if (!req.file) return res.status(400).send('No file uploaded');

@@ -1,10 +1,26 @@
 (function() {
-    // The editor saves by writing HTML files through server.js, which only runs
-    // locally — Vercel's filesystem is read-only. Outside localhost it stays off
-    // entirely so the published site never shows a control that cannot work.
+    // Two backends, same editor:
+    //   local  — server.js writes the HTML file straight to disk
+    //   remote — api/publish.js commits it to GitHub, Vercel redeploys
+    // Vercel's filesystem is read-only, so the remote path has to go the long
+    // way round; the live page updates about a minute after saving.
     var IS_LOCAL = ["localhost", "127.0.0.1", "::1", ""].indexOf(location.hostname) !== -1
         || /^192\.168\./.test(location.hostname);
-    if (!IS_LOCAL) return;
+    var API = {
+        save: IS_LOCAL ? '/api/save' : '/api/publish',
+        upload: '/api/upload'
+    };
+
+    // The password is never stored in this file — admin.html checks it against
+    // the server and hands it over for the session only.
+    function adminPassword() {
+        try { return sessionStorage.getItem('bss_admin_pass') || localStorage.getItem('bss_admin_auth') || ''; }
+        catch (e) { return ''; }
+    }
+
+    // Nothing to edit without credentials, and on the live site the toolbar
+    // must never appear for an ordinary visitor.
+    if (!adminPassword()) return;
 
     // Create Hidden File Input for Image Uploads
     const fileInput = document.createElement('input');
@@ -14,7 +30,7 @@
     document.body.appendChild(fileInput);
 
     let activeImage = null;
-    let isAdmin = localStorage.getItem('bss_admin_auth') === '123456';
+    let isAdmin = Boolean(adminPassword());
     const editorUI = document.createElement('div');
     editorUI.id = 'bss-editor-ui';
 
@@ -369,26 +385,46 @@
         fileInput.onchange = async (e) => {
             if (!e.target.files.length || !activeImage) return;
             const file = e.target.files[0];
-            const formData = new FormData();
-            formData.append('image', file);
-            
+
             try {
                 saveBtn.disabled = true;
                 saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังอัปโหลดภาพ...';
-                
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    headers: { 'x-admin-password': '123456' },
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error(await response.text());
+
+                let response;
+                if (IS_LOCAL) {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    response = await fetch(API.upload, {
+                        method: 'POST',
+                        headers: { 'x-admin-password': adminPassword() },
+                        body: formData
+                    });
+                } else {
+                    // Downscale before sending: keeps the request inside
+                    // Vercel's body limit and the site out of multi-MB photos.
+                    const shrunk = await shrinkImage(file);
+                    response = await fetch(API.upload, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword() },
+                        body: JSON.stringify({ name: file.name, type: shrunk.type, data: shrunk.base64 })
+                    });
                 }
-                
+
+                if (!response.ok) {
+                    throw new Error(await errorText(response));
+                }
+
                 const data = await response.json();
                 if (data.url) {
-                    activeImage.setAttribute('src', data.url);
+                    if (IS_LOCAL) {
+                        activeImage.setAttribute('src', data.url);
+                    } else {
+                        // The committed file does not exist on the CDN until the
+                        // redeploy finishes, so show the local copy meanwhile and
+                        // write the real path into the saved HTML.
+                        activeImage.setAttribute('data-final-src', data.url);
+                        activeImage.setAttribute('src', URL.createObjectURL(file));
+                    }
                     markUnsaved();
                 }
             } catch (err) {
@@ -450,6 +486,13 @@
                 if (cleaned) img.setAttribute('style', cleaned); else img.removeAttribute('style');
             });
 
+            // Swap freshly uploaded images from their local preview back to the
+            // committed path — a blob: URL would be dead in the saved file.
+            clone.querySelectorAll('img[data-final-src]').forEach(img => {
+                img.setAttribute('src', img.getAttribute('data-final-src'));
+                img.removeAttribute('data-final-src');
+            });
+
             // Removing our classes can leave class="" behind — tidy those away
             clone.querySelectorAll('[class=""]').forEach(el => el.removeAttribute('class'));
             clone.querySelectorAll('[style=""]').forEach(el => el.removeAttribute('style'));
@@ -460,16 +503,19 @@
             const content = '<!DOCTYPE html>\n' + clone.outerHTML;
             
             try {
-                const response = await fetch('/api/save', {
+                const response = await fetch(API.save, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-admin-password': '123456' },
+                    headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword() },
                     body: JSON.stringify({ filename, content })
                 });
-                
+
                 if (response.ok) {
-                    saveBtn.innerHTML = '<i class="fas fa-check-circle"></i> บันทึกสำเร็จแล้ว!';
+                    saveBtn.innerHTML = IS_LOCAL
+                        ? '<i class="fas fa-check-circle"></i> บันทึกสำเร็จแล้ว!'
+                        : '<i class="fas fa-check-circle"></i> บันทึกแล้ว — กำลังอัปเดตเว็บ';
                     saveBtn.style.background = '#2ecc71';
                     saveBtn.style.color = '#fff';
+                    if (!IS_LOCAL) showDeployNotice();
                     setTimeout(() => {
                         saveBtn.style.background = '#ff8c00';
                         saveBtn.style.color = '#0a192f';
@@ -477,9 +523,9 @@
                         saveBtn.style.cursor = 'not-allowed';
                         saveBtn.disabled = true;
                         saveBtn.innerHTML = '<i class="fas fa-save"></i> บันทึกการแก้ไข (Publish)';
-                    }, 2000);
+                    }, 2500);
                 } else {
-                    throw new Error('บันทึกไม่สำเร็จ');
+                    throw new Error(await errorText(response));
                 }
             } catch (err) {
                 console.error(err);
@@ -504,10 +550,63 @@
         }, true);
 
         logoutBtn.onclick = () => {
-            localStorage.removeItem('bss_admin_auth');
+            try {
+                sessionStorage.removeItem('bss_admin_pass');
+                localStorage.removeItem('bss_admin_auth');
+            } catch (e) {}
             isAdmin = false;
-            location.reload();
+            location.href = 'admin.html';
         };
+    }
+
+    // The API answers with JSON; server.js answers with plain text.
+    async function errorText(response) {
+        const raw = await response.text();
+        try { return JSON.parse(raw).error || raw; } catch (e) { return raw || ('HTTP ' + response.status); }
+    }
+
+    // Re-encode to at most 1600px on the long edge. Photos off a phone are
+    // routinely 4-8 MB, which both blows the request limit and would make the
+    // page slower than every other image on the site.
+    function shrinkImage(file) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onerror = () => reject(new Error('อ่านไฟล์รูปไม่ได้'));
+            img.onload = () => {
+                const max = 1600;
+                const scale = Math.min(1, max / Math.max(img.width, img.height));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Keep PNG for anything with transparency, otherwise JPEG.
+                const type = file.type === 'image/png' || file.type === 'image/gif' ? 'image/png' : 'image/jpeg';
+                const url = canvas.toDataURL(type, 0.85);
+                URL.revokeObjectURL(img.src);
+                resolve({ type: type, base64: url.slice(url.indexOf(',') + 1) });
+            };
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    function showDeployNotice() {
+        let box = document.getElementById('bss-deploy-notice');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'bss-deploy-notice';
+            box.setAttribute('data-bss-editor', '1');
+            box.style.cssText = 'position:fixed;right:20px;bottom:20px;z-index:1000000;max-width:340px;' +
+                'background:#0a192f;color:#e6f1ff;border:1px solid #ff8c00;border-radius:14px;' +
+                'padding:1rem 1.15rem;font-family:Prompt,sans-serif;font-size:0.9rem;line-height:1.7;' +
+                'box-shadow:0 18px 40px rgba(0,0,0,.45)';
+            document.body.appendChild(box);
+        }
+        box.innerHTML = '<strong style="color:#ff8c00">บันทึกเข้าระบบแล้ว</strong><br>' +
+            'Vercel กำลัง deploy หน้าเว็บจริงจะอัปเดตในราว 1 นาที ' +
+            'รีเฟรชหน้าอีกครั้งเพื่อดูผลครับ';
+        clearTimeout(showDeployNotice._t);
+        showDeployNotice._t = setTimeout(() => box.remove(), 15000);
     }
 
     function enableEditing() {
