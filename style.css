@@ -31,6 +31,17 @@ img, svg, video, iframe {
     max-width: 100%;
 }
 
+/* The width/height attributes on <img> are not just metadata — the browser
+   treats them as CSS. Without this, an image whose CSS sets only a width gets
+   its literal pixel height from the attribute and stretches; that is what
+   turned the factory photo into a 536x1024 sliver. height:auto restores the
+   aspect ratio while still letting the attributes reserve the right space
+   before the file loads. Any rule with a class still wins over this one, so
+   images that deliberately set a height (gallery, cards) are unaffected. */
+img {
+    height: auto;
+}
+
 /* Form controls inherit the page font and shrink with their container.
    16px keeps iOS Safari from zooming in when a field takes focus. */
 input, textarea, select, button {
