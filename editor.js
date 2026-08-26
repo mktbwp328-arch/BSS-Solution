@@ -22,6 +22,23 @@
     // must never appear for an ordinary visitor.
     if (!adminPassword()) return;
 
+    // The same set server.js and api/publish.js will accept. Kept here so the
+    // bar can offer a jump straight to another page without a trip through
+    // admin.html.
+    var EDITABLE_PAGES = [
+        { file: 'index.html',    label: 'หน้าแรก' },
+        { file: 'about.html',    label: 'เกี่ยวกับเรา' },
+        { file: 'services.html', label: 'บริการของเรา' },
+        { file: 'contact.html',  label: 'ติดต่อเรา' },
+        { file: 'articles.html', label: 'บทความ' }
+    ];
+
+    function currentPage() {
+        var path = window.location.pathname;
+        if (path === '/' || path.endsWith('/')) return 'index.html';
+        return path.split('/').pop();
+    }
+
     // Create Hidden File Input for Image Uploads
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -88,6 +105,36 @@
             border-radius: 4px;
             border: 1px solid rgba(255, 140, 0, 0.3);
         }
+        /* Page picker — switch pages without going back through admin.html */
+        .admin-bar-nav-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #bss-page-picker {
+            appearance: none;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 140, 0, 0.45);
+            border-radius: 8px;
+            padding: 8px 30px 8px 12px;
+            min-height: 40px;
+            cursor: pointer;
+            /* Chevron drawn inline so the control needs no image request */
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23ff8c00' stroke-width='2'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 9px center;
+            background-size: 13px;
+            transition: border-color .2s ease, background-color .2s ease;
+        }
+        #bss-page-picker:hover { border-color: #ff8c00; background-color: rgba(255, 140, 0, 0.14); }
+        #bss-page-picker:focus-visible { outline: 2px solid #ff8c00; outline-offset: 2px; }
+        /* The list itself is drawn by the OS — it needs its own dark colours */
+        #bss-page-picker option { background: #0a192f; color: #fff; }
+
         .admin-controls-group {
             display: flex;
             align-items: center;
@@ -137,6 +184,9 @@
                 gap: 10px;
                 padding: 10px 1rem;
             }
+            /* Starting guess only — syncBarOffset() measures the bar and
+               replaces this. Hardcoded numbers went stale the moment the bar
+               gained a control and started wrapping onto a third row. */
             body.bss-admin-mode { margin-top: 0; padding-top: 150px; }
             .admin-bar-nav-info { order: 3; width: 100%; }
             .admin-controls-group { width: 100%; flex-wrap: wrap; gap: 8px; }
@@ -144,7 +194,6 @@
         }
         @media (max-width: 480px) {
             .admin-bar-logo { font-size: 14px; }
-            body.bss-admin-mode { padding-top: 170px; }
         }
 
         /* Floating Element Settings Widget */
@@ -208,10 +257,19 @@
                 </div>
                 
                 <div class="admin-bar-nav-info" style="font-size: 13px; color: #aaa;">
-                    กำลังแก้ไขหน้า: <strong style="color: #fff;">${getCurrentFilename()}</strong>
+                    <label for="bss-page-picker">กำลังแก้ไขหน้า:</label>
+                    <select id="bss-page-picker" title="เลือกหน้าอื่นเพื่อแก้ไขต่อ">
+                        ${EDITABLE_PAGES.map(p =>
+                            `<option value="${p.file}"${p.file === currentPage() ? ' selected' : ''}>${p.label}</option>`
+                        ).join('')}
+                    </select>
                 </div>
 
                 <div class="admin-controls-group">
+                    <button id="back-to-dashboard" class="admin-btn admin-btn-secondary" title="กลับไปหน้ารวมทุกหน้า">
+                        <i class="fas fa-th-large"></i> ทุกหน้า
+                    </button>
+
                     <button id="toggle-edit" class="admin-btn admin-btn-secondary active">
                         <i class="fas fa-edit"></i> ✍️ โหมดแก้ไขข้อความ: เปิดอยู่
                     </button>
@@ -253,20 +311,58 @@
         
         if (!document.getElementById('bss-editor-ui')) document.body.appendChild(editorUI);
         setupEditorEvents();
-        
+        watchBarHeight();
+
         // Auto-enable Editing Mode on Load for absolute convenience!
         isEditing = true;
         enableEditing();
     }
 
+    /**
+     * Push the page down by exactly the bar's height.
+     *
+     * The bar is fixed, so the page needs an offset or its header sits under
+     * it. That offset used to be three hardcoded numbers per breakpoint, and
+     * they were already wrong: on a phone the bar wraps to 238px while the CSS
+     * reserved 150px, hiding the top of every page. Measuring removes the
+     * guesswork, and a ResizeObserver keeps it right when the bar rewraps —
+     * on rotation, on resize, or when a button's label changes width.
+     *
+     * Written into a data-bss-editor stylesheet rather than an inline style on
+     * <body>, so the save routine strips it along with the rest of the editor
+     * chrome instead of baking a padding into the published file.
+     */
+    function syncBarOffset() {
+        const bar = document.getElementById('bss-admin-bar');
+        if (!bar) return;
+        let sheet = document.getElementById('bss-admin-offset');
+        if (!sheet) {
+            sheet = document.createElement('style');
+            sheet.id = 'bss-admin-offset';
+            sheet.setAttribute('data-bss-editor', '1');
+            document.head.appendChild(sheet);
+        }
+        const h = Math.ceil(bar.getBoundingClientRect().height);
+        // The site's own navbar is fixed at top:0, so body padding does not
+        // move it — it sat underneath the admin bar, leaving a sliver of the
+        // logo showing and the menu unreachable while editing.
+        sheet.textContent =
+            `body.bss-admin-mode{margin-top:0 !important;padding-top:${h}px !important;}` +
+            `body.bss-admin-mode > nav{top:${h}px !important;}`;
+    }
+
+    function watchBarHeight() {
+        syncBarOffset();
+        const bar = document.getElementById('bss-admin-bar');
+        if (bar && window.ResizeObserver) new ResizeObserver(syncBarOffset).observe(bar);
+        window.addEventListener('resize', syncBarOffset);
+        // Web fonts land after first paint and can change the bar's height
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncBarOffset);
+    }
+
     function getCurrentFilename() {
-        const path = window.location.pathname;
-        if (path === '/' || path.endsWith('/')) return 'index.html (หน้าแรก)';
-        const file = path.split('/').pop();
-        if (file === 'admin.html') return 'admin.html (หน้าแรกแอดมิน)';
-        if (file === 'about.html') return 'about.html (เกี่ยวกับเรา)';
-        if (file === 'articles.html') return 'articles.html (บทความ)';
-        return file;
+        const page = EDITABLE_PAGES.filter(function (p) { return p.file === currentPage(); })[0];
+        return page ? page.label : currentPage();
     }
 
     let selectedElement = null;
@@ -552,6 +648,30 @@
         document.addEventListener('input', (e) => {
             if (e.target && e.target.isContentEditable) markUnsaved();
         }, true);
+
+        // Jumping between pages without going back through admin.html. The
+        // Publish button being enabled is the signal that edits are pending —
+        // navigating away would silently discard them.
+        function leaveFor(url) {
+            if (!saveBtn.disabled &&
+                !confirm('ยังไม่ได้บันทึกการแก้ไขหน้านี้ ถ้าออกตอนนี้การแก้ไขจะหายไป\n\nต้องการออกโดยไม่บันทึกใช่หรือไม่?')) {
+                return false;
+            }
+            window.location.href = url;
+            return true;
+        }
+
+        const picker = document.getElementById('bss-page-picker');
+        if (picker) {
+            picker.onchange = () => {
+                const target = picker.value;
+                if (target === currentPage()) return;
+                if (!leaveFor(target + '?edit=1')) picker.value = currentPage();
+            };
+        }
+
+        const dashBtn = document.getElementById('back-to-dashboard');
+        if (dashBtn) dashBtn.onclick = () => leaveFor('admin.html');
 
         logoutBtn.onclick = () => {
             try {
