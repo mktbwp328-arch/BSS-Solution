@@ -572,6 +572,23 @@
             const navList = clone.querySelector('#bss-nav-links');
             if (navList) navList.removeAttribute('id');
 
+            // The page's scroll handler writes padding and background onto the
+            // navbar as you scroll. Saving while scrolled down baked the
+            // compact version into the file, so the bar loaded shrunk until
+            // the first scroll fired. That is runtime state, not content.
+            const savedNav = clone.querySelector('#navbar');
+            if (savedNav && savedNav.hasAttribute('style')) {
+                // Split rather than regex-replace: one pattern matching both
+                // properties consumed the separating semicolon and let the
+                // second declaration through.
+                const cleaned = savedNav.getAttribute('style')
+                    .split(';')
+                    .filter(decl => decl.trim() && !/^\s*(padding|background)\s*:/i.test(decl))
+                    .join(';')
+                    .trim();
+                if (cleaned) savedNav.setAttribute('style', cleaned + ';'); else savedNav.removeAttribute('style');
+            }
+
             // enableEditing() sets cursor:pointer on images so they look clickable.
             // That is editor chrome, not content — strip it back out of the saved file.
             clone.querySelectorAll('img[style*="cursor"]').forEach(img => {
