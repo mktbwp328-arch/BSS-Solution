@@ -118,6 +118,25 @@ node set-domain.js https://www.bsssolution1978.com
 
 ปัจจุบันชี้ที่ `https://bsssolution1978.vercel.app`
 
+## วิดีโอ Motion Graphic
+
+วิดีโอแนะนำบริษัท 30 วินาที 1920×1080 สำหรับลง Facebook / YouTube
+
+```bash
+node video/render.js
+```
+
+ได้ไฟล์ `video/bss-motion.mp4` (ใช้เวลาเรนเดอร์ราว 2 นาที)
+
+- แก้ข้อความ/รูป/จังหวะ ที่ `video/scene.html` — เนื้อหาอยู่ใน `SERVICES`, `RANGE`, `STATS`, `MONTAGE`
+  ช่วงเวลาแต่ละฉากอยู่ใน `SCENES` (หน่วยเป็นเฟรม, 30 เฟรม = 1 วินาที)
+- ดูเฟรมเดี่ยวก่อนเรนเดอร์จริง: `node video/render.js --preview 80,300,700` → `video/preview/`
+- ใช้ Chrome ที่ติดตั้งในเครื่อง ไม่ต้องดาวน์โหลด Chromium
+- ไฟล์ MP4 ไม่ถูก commit และไม่ขึ้นเว็บ (อยู่ใน `.gitignore` / `.vercelignore`)
+- ฉาก "ผลงานของเรา" ใช้**เฉพาะรูปงานจริงของบริษัท** — รูปใน `images/works/` บางรูปเป็นภาพ stock/CG
+  (เช่น `screw-conveyor.jpg`, `industrial-conveyor-belt.jpg`, `recycling-sorting-system.jpg`)
+  ถ้าเพิ่มรูปในฉากนั้น ให้ใช้รูปที่ถ่ายจากงานจริงเท่านั้น
+
 ## ความปลอดภัยของหน้าแอดมิน
 
 - รหัสผ่านตรวจสอบที่ฝั่งเซิร์ฟเวอร์ (`api/_lib.js`) เทียบแบบ constant-time

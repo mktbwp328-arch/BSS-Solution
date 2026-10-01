@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>BSS SOLUTION — Motion Graphic</title>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ---------------------------------------------------------------------------
+   Deterministic motion graphic.
+
+   Nothing here animates by itself: there is not a single CSS transition,
+   animation or time-based script. Every moving value is computed from a frame
+   number by render(f). The renderer can then seek to frame 417, screenshot,
+   and get exactly the same pixels every run, however long the capture takes.
+   A wall-clock animation would drift and tear under a slow screenshot loop.
+--------------------------------------------------------------------------- */
+
+:root {
+    --navy:    #0a192f;
+    --navy-2:  #0d2137;
+    --orange:  #ff8c00;
+    --orange-2:#ff4d00;
+    --ink:     #e6f1ff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: #000;
+    font-family: 'Prompt', 'Leelawadee UI', 'Tahoma', sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+}
+
+#stage {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: var(--navy);
+}
+
+.scene {
+    position: absolute;
+    inset: 0;
+    display: none;
+    overflow: hidden;
+}
+.scene.on { display: block; }
+
+/* ---- Photo plates ------------------------------------------------------- */
+.plate {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    will-change: transform;
+}
+/* Photos come from a dozen different shoots; this pass pulls them toward one
+   cool industrial grade so cuts between them do not read as a colour jump. */
+.plate.graded { filter: saturate(0.55) contrast(1.18) brightness(0.68); }
+
+.tint {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(10,25,47,.82) 0%, rgba(10,25,47,.42) 45%, rgba(10,25,47,.92) 100%),
+        linear-gradient(90deg, rgba(10,25,47,.9) 0%, rgba(10,25,47,.1) 55%);
+}
+
+/* Fine scan grid — reads as "engineering drawing" rather than decoration */
+.grid-overlay {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+    background-size: 64px 64px;
+}
+.scanlines {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(180deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
+    mix-blend-mode: multiply;
+}
+
+/* ---- Type --------------------------------------------------------------- */
+.kicker {
+    font-family: 'Barlow Condensed', 'Prompt', sans-serif;
+    font-weight: 700;
+    letter-spacing: .34em;
+    text-transform: uppercase;
+    color: var(--orange);
+    font-size: 26px;
+}
+.huge {
+    font-weight: 800;
+    line-height: .96;
+    letter-spacing: -.015em;
+    text-shadow: 0 18px 50px rgba(0,0,0,.55);
+}
+.orange { color: var(--orange); }
+
+/* A clipped line: the mask slides, the glyphs do not stretch */
+.reveal-line { overflow: hidden; display: block; }
+.reveal-line > span { display: block; will-change: transform; }
+
+/* ---- Industrial furniture ----------------------------------------------- */
+.rule {
+    position: absolute;
+    background: var(--orange);
+    transform-origin: left center;
+}
+.bracket {
+    position: absolute;
+    border: 3px solid var(--orange);
+    width: 56px; height: 56px;
+}
+.bracket.tl { border-right: 0; border-bottom: 0; }
+.bracket.tr { border-left: 0;  border-bottom: 0; }
+.bracket.bl { border-right: 0; border-top: 0; }
+.bracket.br { border-left: 0;  border-top: 0; }
+
+/* ---- Transition layers -------------------------------------------------- */
+/* A hard-edged orange slab that sweeps the frame diagonally. Steeper than 45°
+   so it reads as a machine part passing, not a generic wipe. */
+#slash {
+    position: absolute;
+    top: -30%;
+    left: 0;
+    width: 150%;
+    height: 160%;
+    background: linear-gradient(90deg, var(--orange-2), var(--orange));
+    transform: skewX(-14deg) translateX(-130%);
+    will-change: transform;
+}
+#flash {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+}
+#vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* Kept light: at .62 it greyed out every heading parked near a corner */
+    background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.38) 100%);
+}
+
+/* RGB split: two tinted copies ride either side of the original on a cut */
+.glitch { position: relative; }
+.glitch .g-r, .glitch .g-c {
+    position: absolute;
+    inset: 0;
+    mix-blend-mode: screen;
+    pointer-events: none;
+}
+.glitch .g-r { color: #ff0040; }
+.glitch .g-c { color: #00e5ff; }
+
+/* ---- Rapid-fire service cards ------------------------------------------- */
+.cards { position: absolute; inset: 0; }
+.card {
+    position: absolute;
+    overflow: hidden;
+    border: 2px solid rgba(255,140,0,.55);
+    background: #061120;
+}
+.card .ph { position: absolute; inset: 0; background-size: cover; background-position: center;
+            filter: saturate(.5) contrast(1.2) brightness(.6); }
+.card .lb {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 18px 20px;
+    background: linear-gradient(0deg, rgba(6,17,32,.96), rgba(6,17,32,0));
+    font-weight: 700; font-size: 28px;
+}
+.card .no {
+    position: absolute; top: 14px; left: 18px;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800;
+    font-size: 30px; color: var(--orange); letter-spacing: .08em;
+}
+
+/* ---- Stat blocks -------------------------------------------------------- */
+.stat { position: absolute; text-align: left; }
+.stat .num {
+    font-family: 'Barlow Condensed', 'Prompt', sans-serif;
+    font-weight: 800; font-size: 150px; line-height: .86; color: #fff;
+}
+.stat .num em { font-style: normal; color: var(--orange); }
+.stat .cap { font-size: 26px; color: rgba(230,241,255,.72); margin-top: 10px; font-weight: 600; }
+
+/* ---- Montage ------------------------------------------------------------ */
+.strip { position: absolute; inset: 0; }
+.shot { position: absolute; inset: 0; background-size: cover; background-position: center;
+        filter: saturate(.55) contrast(1.2) brightness(.72); }
+
+/* ---- Lower third / CTA -------------------------------------------------- */
+.contact-row { display: flex; align-items: center; gap: 18px; font-size: 34px; font-weight: 600; }
+.contact-row .ic {
+    width: 54px; height: 54px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--orange); color: var(--orange);
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 22px;
+}
+</style>
+</head>
+<body>
+
+<div id="stage">
+
+    <!-- 1 ─ Logo slam ---------------------------------------------------- -->
+    <section class="scene" id="s1">
+        <div class="plate graded" id="s1-plate" style="background-image:url('../images/works/conveyor-belt-factory.jpg')"></div>
+        <div class="tint"></div>
+        <div class="grid-overlay"></div>
+        <div class="rule" id="s1-rule" style="left:360px; top:742px; height:7px; width:1200px;"></div>
+        <div style="position:absolute; left:360px; top:430px; width:1300px;">
+            <div class="reveal-line" style="height:86px;">
+                <span id="s1-k" class="kicker" style="font-size:44px; line-height:86px;">CONVEYOR SYSTEM SPECIALIST</span>
+            </div>
+            <div class="reveal-line" style="height:190px; margin-top:6px;">
+                <span id="s1-t" class="huge" style="font-size:168px; line-height:190px;">BSS <span class="orange">SOLUTION</span></span>
+            </div>
+        </div>
+        <div id="s1-year" style="position:absolute; left:363px; top:778px; font-family:'Barlow Condensed',sans-serif;
+             font-weight:800; font-size:92px; letter-spacing:.16em; color:#fff;">1978</div>
+        <div id="s1-sub" style="position:absolute; left:640px; top:806px; font-size:30px; font-weight:600;
+             color:rgba(230,241,255,.7);">ประสบการณ์ตั้งแต่ปี 2521</div>
+    </section>
+
+    <!-- 2 ─ Hook ---------------------------------------------------------- -->
+    <section class="scene" id="s2">
+        <div class="plate graded" id="s2-plate" style="background-image:url('../images/works/recycling-conveyor-equipment.jpg')"></div>
+        <div class="tint"></div>
+        <div class="scanlines"></div>
+        <div style="position:absolute; left:150px; top:330px; width:1650px;">
+            <div class="reveal-line" style="height:168px;">
+                <span id="s2-l1" class="huge glitch" style="font-size:150px; line-height:168px;">รับทำสายพานลำเลียง</span>
+            </div>
+            <div class="reveal-line" style="height:168px;">
+                <span id="s2-l2" class="huge" style="font-size:150px; line-height:168px;">ครบ<span class="orange">วงจร</span></span>
+            </div>
+            <div class="reveal-line" style="height:74px; margin-top:18px;">
+                <span id="s2-l3" style="font-size:40px; line-height:74px; font-weight:600; color:rgba(230,241,255,.82);">
+                    ออกแบบ · ผลิต · ติดตั้ง · ซ่อมบำรุง
+                </span>
+            </div>
+        </div>
+        <div class="bracket tl" id="s2-b1" style="left:110px; top:286px;"></div>
+        <div class="bracket br" id="s2-b2" style="right:110px; bottom:286px;"></div>
+    </section>
+
+    <!-- 3 ─ Services, rapid fire ------------------------------------------ -->
+    <section class="scene" id="s3">
+        <div style="position:absolute; inset:0; background:var(--navy);"></div>
+        <div class="grid-overlay"></div>
+        <!-- Oversized outline numeral fills the left half, which the cards
+             alone left empty -->
+        <div id="s3-big" style="position:absolute; left:70px; top:250px; font-family:'Barlow Condensed',sans-serif;
+             font-weight:800; font-size:560px; line-height:1; color:transparent;
+             -webkit-text-stroke:3px rgba(255,140,0,.22);">04</div>
+        <div id="s3-head" style="position:absolute; left:130px; top:330px; width:760px;">
+            <div class="kicker" style="font-size:28px;">WHAT WE DO</div>
+            <div class="huge" style="font-size:104px; margin-top:14px;">บริการ<br><span class="orange">ครบวงจร</span></div>
+            <div id="s3-sub" style="margin-top:30px; font-size:34px; font-weight:600; line-height:1.5;
+                 color:rgba(230,241,255,.78);">จบในที่เดียว ตั้งแต่ออกแบบ<br>จนส่งมอบหน้างาน</div>
+            <div class="rule" id="s3-rule" style="position:relative; margin-top:34px; height:6px; width:220px;"></div>
+        </div>
+        <div class="cards" id="s3-cards"></div>
+    </section>
+
+    <!-- 4 ─ Capability list ------------------------------------------------ -->
+    <section class="scene" id="s4">
+        <div class="plate graded" id="s4-plate" style="background-image:url('../images/works/roller-conveyor-system.jpg')"></div>
+        <div style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,25,47,.97) 36%, rgba(10,25,47,.35) 100%);"></div>
+        <div class="scanlines"></div>
+        <div id="s4-head" style="position:absolute; left:130px; top:120px;">
+            <div class="kicker" style="font-size:28px;">PRODUCT RANGE</div>
+            <div class="huge" style="font-size:84px; margin-top:12px;">ทำได้<span class="orange">ทุกแบบ</span></div>
+        </div>
+        <div id="s4-list" style="position:absolute; left:130px; top:330px; width:1000px;"></div>
+    </section>
+
+    <!-- 5 ─ Numbers -------------------------------------------------------- -->
+    <section class="scene" id="s5">
+        <div class="plate graded" id="s5-plate" style="background-image:url('../images/works/chain-conveyor-system.jpg')"></div>
+        <div style="position:absolute; inset:0; background:rgba(10,25,47,.9);"></div>
+        <div class="grid-overlay"></div>
+        <div id="s5-head" style="position:absolute; left:130px; top:150px;">
+            <div class="kicker" style="font-size:28px;">SINCE 1978</div>
+            <div class="huge" style="font-size:88px; margin-top:12px;">ประสบการณ์<span class="orange">ที่สั่งสม</span></div>
+        </div>
+        <div id="s5-stats"></div>
+        <div class="rule" id="s5-rule" style="left:130px; top:720px; height:6px; width:1660px;"></div>
+    </section>
+
+    <!-- 6 ─ Work montage ---------------------------------------------------- -->
+    <section class="scene" id="s6">
+        <div class="strip" id="s6-strip"></div>
+        <div style="position:absolute; inset:0; background:linear-gradient(0deg, rgba(10,25,47,.85), rgba(10,25,47,.05) 60%);"></div>
+        <div id="s6-cap" style="position:absolute; left:130px; bottom:140px;">
+            <div class="kicker" style="font-size:26px;">OUR WORK</div>
+            <div class="huge" id="s6-label" style="font-size:92px; margin-top:10px;">ผลงาน<span class="orange">ของเรา</span></div>
+        </div>
+        <div class="bracket tr" style="right:110px; top:110px;"></div>
+        <div class="bracket bl" style="left:110px; bottom:110px;"></div>
+    </section>
+
+    <!-- 7 ─ CTA -------------------------------------------------------------- -->
+    <section class="scene" id="s7">
+        <div style="position:absolute; inset:0; background:
+             radial-gradient(ellipse at 50% 40%, #16314f 0%, var(--navy) 62%);"></div>
+        <div class="grid-overlay"></div>
+        <img id="s7-logo" src="../logo.png" alt=""
+             style="position:absolute; left:50%; top:196px; width:168px; height:168px; margin-left:-84px; border-radius:18px;">
+        <div id="s7-name" style="position:absolute; left:0; right:0; top:410px; text-align:center;">
+            <div class="huge" style="font-size:104px;">BSS <span class="orange">SOLUTION</span>
+                <span style="font-family:'Barlow Condensed',sans-serif; letter-spacing:.1em;">(1978)</span></div>
+        </div>
+        <div id="s7-line" style="position:absolute; left:50%; top:556px; width:0; height:6px;
+             background:var(--orange); transform:translateX(-50%);"></div>
+        <div id="s7-contact" style="position:absolute; left:0; right:0; top:620px;
+             display:flex; flex-direction:column; align-items:center; gap:26px;">
+            <div class="contact-row"><div class="ic">TEL</div><span>02-317-5470-3</span></div>
+            <div class="contact-row"><div class="ic">WEB</div><span>bsssolution1978.vercel.app</span></div>
+            <div class="contact-row"><div class="ic">AT</div><span>สมุทรปราการ · บริการทั่วประเทศ</span></div>
+        </div>
+        <div class="bracket tl" style="left:150px; top:150px;"></div>
+        <div class="bracket tr" style="right:150px; top:150px;"></div>
+        <div class="bracket bl" style="left:150px; bottom:150px;"></div>
+        <div class="bracket br" style="right:150px; bottom:150px;"></div>
+    </section>
+
+    <!-- Transition furniture, above every scene -->
+    <div id="slash"></div>
+    <div id="flash"></div>
+    <div id="vignette"></div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+const FPS   = 30;
+const W     = 1920;
+
+/* Scene boundaries in frames. Cuts land on a steady ~3-4s pulse so the piece
+   has a beat even without music. */
+const SCENES = [
+    { id: 's1', from:   0, to: 108 },   //  0.0 – 3.6s   logo slam
+    { id: 's2', from: 108, to: 234 },   //  3.6 – 7.8s   hook
+    { id: 's3', from: 234, to: 390 },   //  7.8 – 13.0s  services
+    { id: 's4', from: 390, to: 510 },   // 13.0 – 17.0s  product range
+    { id: 's5', from: 510, to: 630 },   // 17.0 – 21.0s  numbers
+    { id: 's6', from: 630, to: 756 },   // 21.0 – 25.2s  montage
+    { id: 's7', from: 756, to: 900 }    // 25.2 – 30.0s  CTA
+];
+const TOTAL = 900;                       // 30.0s
+
+/* ---- easing ---------------------------------------------------------- */
+const clamp  = (v, a, b) => v < a ? a : v > b ? b : v;
+const inv    = (f, a, b) => clamp((f - a) / (b - a), 0, 1);
+const outExpo = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+const outCubic= t => 1 - Math.pow(1 - t, 3);
+const inOutCubic = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+const outBack = t => { const c = 1.9; return 1 + (c+1)*Math.pow(t-1,3) + c*Math.pow(t-1,2); };
+const lerp   = (a, b, t) => a + (b - a) * t;
+
+/* Deterministic pseudo-random: glitch must jitter the same way every run,
+   so Math.random() is out. */
+function noise(seed) {
+    const x = Math.sin(seed * 12.9898) * 43758.5453;
+    return x - Math.floor(x);
+}
+
+const $ = id => document.getElementById(id);
+
+/* ---- content --------------------------------------------------------- */
+const SERVICES = [
+    { n: '01', label: 'ออกแบบระบบ',        img: 'conveyor-system.jpg' },
+    { n: '02', label: 'ผลิตสายพาน',        img: 'pvc-belt-conveyor.jpg' },
+    { n: '03', label: 'ติดตั้งหน้างาน',     img: 'conveyor-installation-service.jpg' },
+    { n: '04', label: 'งาน Shutdown',      img: 'factory-shutdown-service.jpg' }
+];
+
+const RANGE = [
+    'Belt Conveyor — สายพานลำเลียง PVC / PU',
+    'Roller Conveyor — ลูกกลิ้งลำเลียง',
+    'Chain Conveyor — โซ่ลำเลียง',
+    'Screw Conveyor — สกรูลำเลียง',
+    'ระบบลำเลียงอัตโนมัติ',
+    'Recycling & Sorting System'
+];
+
+const STATS = [
+    { v: 45,  suffix: '+', cap: 'ปีของประสบการณ์',  x: 130  },
+    { v: 500, suffix: '+', cap: 'โปรเจกต์ที่ส่งมอบ', x: 740  },
+    { v: 18,  suffix: '',  cap: 'ประเภทระบบลำเลียง', x: 1350 }
+];
+
+const MONTAGE = [
+    // Every shot here is a BSS workshop or site photo. Stock and CG images in
+    // images/works were left out on purpose — this scene is captioned as our
+    // work, and that caption has to be true of every frame under it.
+    'roller-conveyor.jpg',
+    'conveyor-belt-line.jpg',
+    'chain-conveyor.jpg',
+    'pvc-conveyor-belt-system.jpg',
+    'conveyor-company-chonburi.jpg',
+    'conveying-system.jpg'
+];
+
+/* ---- one-time DOM build ---------------------------------------------- */
+function build() {
+    const cards = $('s3-cards');
+    SERVICES.forEach((s, i) => {
+        const col = i % 2, row = (i / 2) | 0;
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.id = 'card' + i;
+        el.style.left   = (980 + col * 440) + 'px';
+        el.style.top    = (150 + row * 400) + 'px';
+        el.style.width  = '400px';
+        el.style.height = '360px';
+        el.innerHTML =
+            `<div class="ph" style="background-image:url('../images/works/${s.img}')"></div>` +
+            `<div class="no">${s.n}</div><div class="lb">${s.label}</div>`;
+        cards.appendChild(el);
+    });
+
+    const list = $('s4-list');
+    RANGE.forEach((t, i) => {
+        const el = document.createElement('div');
+        el.id = 'rg' + i;
+        el.style.cssText = 'display:flex;align-items:center;gap:22px;margin-bottom:26px;font-size:40px;font-weight:600;';
+        el.innerHTML = `<span style="width:16px;height:16px;background:var(--orange);flex:0 0 auto;"></span><span>${t}</span>`;
+        list.appendChild(el);
+    });
+
+    const stats = $('s5-stats');
+    STATS.forEach((s, i) => {
+        const el = document.createElement('div');
+        el.className = 'stat';
+        el.id = 'st' + i;
+        el.style.left = s.x + 'px';
+        el.style.top  = '440px';
+        el.innerHTML = `<div class="num"><span id="stv${i}">0</span><em>${s.suffix}</em></div>
+                        <div class="cap">${s.cap}</div>`;
+        stats.appendChild(el);
+    });
+
+    const strip = $('s6-strip');
+    MONTAGE.forEach((img, i) => {
+        const el = document.createElement('div');
+        el.className = 'shot';
+        el.id = 'sh' + i;
+        el.style.backgroundImage = `url('../images/works/${img}')`;
+        strip.appendChild(el);
+    });
+}
+
+/* ---- per-scene rendering --------------------------------------------- */
+
+function scene1(f, p) {
+    // Slow push in: the frame never sits still, which keeps a static plate alive
+    $('s1-plate').style.transform = `scale(${lerp(1.16, 1.03, outCubic(p))})`;
+
+    const k = outExpo(inv(f, 8, 30));
+    $('s1-k').style.transform = `translateY(${(1 - k) * 100}%)`;
+
+    const t = outExpo(inv(f, 16, 44));
+    $('s1-t').style.transform = `translateY(${(1 - t) * 105}%)`;
+
+    const r = outExpo(inv(f, 34, 58));
+    $('s1-rule').style.transform = `scaleX(${r})`;
+
+    // The year snaps rather than eases — it should land like a stamp
+    const y = outBack(inv(f, 44, 66));
+    $('s1-year').style.transform = `scale(${lerp(1.5, 1, y)})`;
+    $('s1-year').style.opacity   = inv(f, 44, 56);
+
+    $('s1-sub').style.opacity   = inv(f, 60, 76);
+    $('s1-sub').style.transform = `translateX(${(1 - outCubic(inv(f, 60, 80))) * 40}px)`;
+}
+
+function scene2(f, p) {
+    const local = f - 108;
+    $('s2-plate').style.transform = `scale(${lerp(1.02, 1.14, p)})`;
+
+    [['s2-l1', 6], ['s2-l2', 16], ['s2-l3', 30]].forEach(([id, delay]) => {
+        const t = outExpo(inv(local, delay, delay + 26));
+        $(id).style.transform = `translateY(${(1 - t) * 108}%)`;
+    });
+
+    // RGB split: strongest right after the cut, gone within half a second
+    const g = clamp(1 - inv(local, 4, 20), 0, 1) * 14;
+    const j = (noise(f) - .5) * g;
+    const l1 = $('s2-l1');
+    l1.style.textShadow = g > .4
+        ? `${j + g}px 0 rgba(255,0,64,.85), ${-j - g}px 0 rgba(0,229,255,.85), 0 18px 50px rgba(0,0,0,.55)`
+        : '0 18px 50px rgba(0,0,0,.55)';
+
+    const bb = outExpo(inv(local, 20, 48));
+    $('s2-b1').style.opacity = bb;
+    $('s2-b2').style.opacity = bb;
+    $('s2-b1').style.transform = `translate(${(1 - bb) * -40}px, ${(1 - bb) * -40}px)`;
+    $('s2-b2').style.transform = `translate(${(1 - bb) * 40}px, ${(1 - bb) * 40}px)`;
+}
+
+function scene3(f) {
+    const local = f - 234;
+    const h = outExpo(inv(local, 4, 28));
+    $('s3-head').style.transform = `translateX(${(1 - h) * -60}px)`;
+    $('s3-head').style.opacity   = h;
+
+    // The numeral drifts slowly the other way — parallax against the heading
+    const b = outCubic(inv(local, 0, 40));
+    $('s3-big').style.opacity   = b;
+    $('s3-big').style.transform = `translateX(${lerp(-80, 0, b) + inv(local, 40, 156) * 24}px)`;
+
+    $('s3-sub').style.opacity  = inv(local, 20, 38);
+    $('s3-rule').style.transform = `scaleX(${outExpo(inv(local, 26, 50))})`;
+
+    // Cards punch in one after another, 11 frames apart — fast enough to feel
+    // like a burst, slow enough to read each label
+    SERVICES.forEach((_, i) => {
+        const start = 18 + i * 11;
+        const t  = outBack(inv(local, start, start + 20));
+        const op = inv(local, start, start + 8);
+        const el = $('card' + i);
+        el.style.opacity   = op;
+        el.style.transform = `translateY(${(1 - t) * 70}px) scale(${lerp(.86, 1, t)})`;
+        // Slow drift afterwards so the grid is never fully frozen
+        const drift = inv(local, start + 20, 156) * 10;
+        el.querySelector('.ph').style.transform = `scale(${1.08 + drift * .004})`;
+    });
+}
+
+function scene4(f) {
+    const local = f - 390;
+    $('s4-plate').style.transform = `scale(${lerp(1.14, 1.02, outCubic(inv(local, 0, 120)))})`;
+
+    const h = outExpo(inv(local, 4, 26));
+    $('s4-head').style.opacity   = h;
+    $('s4-head').style.transform = `translateY(${(1 - h) * -34}px)`;
+
+    RANGE.forEach((_, i) => {
+        const start = 16 + i * 9;
+        const t = outExpo(inv(local, start, start + 22));
+        const el = $('rg' + i);
+        el.style.opacity   = inv(local, start, start + 10);
+        el.style.transform = `translateX(${(1 - t) * -56}px)`;
+    });
+}
+
+function scene5(f) {
+    const local = f - 510;
+    const hd = outExpo(inv(local, 2, 24));
+    $('s5-head').style.opacity   = hd;
+    $('s5-head').style.transform = `translateY(${(1 - hd) * -30}px)`;
+    STATS.forEach((s, i) => {
+        const start = 8 + i * 14;
+        const t  = inOutCubic(inv(local, start, start + 44));
+        const el = $('st' + i);
+        el.style.opacity   = inv(local, start, start + 12);
+        el.style.transform = `translateY(${(1 - outExpo(inv(local, start, start + 26))) * 50}px)`;
+        $('stv' + i).textContent = Math.round(s.v * t);
+    });
+    $('s5-rule').style.transform = `scaleX(${outExpo(inv(local, 40, 86))})`;
+    $('s5-plate').style.transform = `scale(${lerp(1.0, 1.1, inv(local, 0, 120))})`;
+}
+
+function scene6(f) {
+    const local = f - 630;
+    const per   = 21;                         // ~0.7s per shot — a real burst
+    const idx   = Math.min(MONTAGE.length - 1, (local / per) | 0);
+
+    MONTAGE.forEach((_, i) => {
+        const el = $('sh' + i);
+        const on = i === idx;
+        el.style.opacity = on ? 1 : 0;
+        if (on) {
+            const t = (local - i * per) / per;
+            // Alternate push-in and pull-back so consecutive cuts do not
+            // feel like one continuous move
+            el.style.transform = i % 2
+                ? `scale(${lerp(1.16, 1.04, t)})`
+                : `scale(${lerp(1.04, 1.16, t)})`;
+        }
+    });
+
+    const c = outExpo(inv(local, 6, 30));
+    $('s6-cap').style.opacity   = c;
+    $('s6-cap').style.transform = `translateY(${(1 - c) * 44}px)`;
+}
+
+function scene7(f) {
+    const local = f - 756;
+    const l = outBack(inv(local, 4, 34));
+    $('s7-logo').style.opacity   = inv(local, 4, 18);
+    $('s7-logo').style.transform = `scale(${lerp(.5, 1, l)})`;
+
+    const n = outExpo(inv(local, 18, 46));
+    $('s7-name').style.opacity   = inv(local, 18, 32);
+    $('s7-name').style.transform = `translateY(${(1 - n) * 40}px)`;
+
+    $('s7-line').style.width = (outExpo(inv(local, 34, 64)) * 560) + 'px';
+
+    const rows = $('s7-contact').children;
+    for (let i = 0; i < rows.length; i++) {
+        const start = 46 + i * 10;
+        const t = outExpo(inv(local, start, start + 24));
+        rows[i].style.opacity   = inv(local, start, start + 12);
+        rows[i].style.transform = `translateY(${(1 - t) * 30}px)`;
+    }
+}
+
+const RENDERERS = { s1: scene1, s2: scene2, s3: scene3, s4: scene4, s5: scene5, s6: scene6, s7: scene7 };
+
+/* ---- transitions between scenes --------------------------------------- */
+function transitions(f) {
+    const slash = $('slash');
+    const flash = $('flash');
+
+    // Default: parked off-screen left
+    let x = -130, flashOp = 0;
+
+    for (let i = 1; i < SCENES.length; i++) {
+        const cut = SCENES[i].from;
+        const a = cut - 11, b = cut + 11;        // 22 frames ≈ 0.73s
+        if (f >= a && f <= b) {
+            const t = inv(f, a, b);
+            x = lerp(-130, 130, inOutCubic(t));
+            // Two-frame blow-out exactly on the cut sells the impact
+            if (Math.abs(f - cut) <= 1) flashOp = .3 - Math.abs(f - cut) * .14;
+        }
+    }
+    slash.style.transform = `skewX(-14deg) translateX(${x}%)`;
+    flash.style.opacity   = flashOp;
+}
+
+/* ---- the single entry point the renderer drives ----------------------- */
+function render(f) {
+    f = clamp(f, 0, TOTAL - 1);
+
+    const active = SCENES.find(s => f >= s.from && f < s.to) || SCENES[SCENES.length - 1];
+    SCENES.forEach(s => $(s.id).classList.toggle('on', s.id === active.id));
+
+    const p = inv(f, active.from, active.to);
+    RENDERERS[active.id](f, p);
+    transitions(f);
+}
+
+build();
+render(0);
+
+window.__FPS   = FPS;
+window.__TOTAL = TOTAL;
+window.__seek  = render;
+window.__ready = true;
+})();
+</script>
+</body>
+</html>

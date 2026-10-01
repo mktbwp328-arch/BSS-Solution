@@ -12,3 +12,6 @@ node_modules/
 backups/
 bss.zip
 .claude/
+
+# Motion graphic source and renderer — not part of the website
+video/
