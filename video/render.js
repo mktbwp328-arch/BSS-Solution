@@ -24,8 +24,11 @@ const puppeteer = require('puppeteer-core');
 const ffmpeg = require('ffmpeg-static');
 
 const ROOT = __dirname;
-const SCENE = 'file:///' + path.join(ROOT, 'scene.html').replace(/\\/g, '/');
-const OUT = path.join(ROOT, 'bss-motion.mp4');
+// --vertical renders the 1080x1920 portrait cut for TikTok / Reels / Shorts
+const VERTICAL = process.argv.includes('--vertical');
+const W = VERTICAL ? 1080 : 1920, H = VERTICAL ? 1920 : 1080;
+const SCENE = 'file:///' + path.join(ROOT, 'scene.html').replace(/\\/g, '/') + (VERTICAL ? '?vertical' : '');
+const OUT = path.join(ROOT, VERTICAL ? 'bss-motion-vertical.mp4' : 'bss-motion.mp4');
 
 const BROWSERS = [
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -49,7 +52,7 @@ async function openScene() {
         args: ['--allow-file-access-from-files', '--hide-scrollbars', '--force-color-profile=srgb']
     });
     const page = await browser.newPage();
-    await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
+    await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
     await page.goto(SCENE, { waitUntil: 'networkidle0', timeout: 60000 });
 
     // Background images are invisible to the load event and to fonts.ready.

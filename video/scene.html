@@ -237,6 +237,72 @@ html, body {
     border: 3px solid var(--orange); color: var(--orange);
     font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 28px; letter-spacing: .04em;
 }
+
+/* ===========================================================================
+   Portrait 1080x1920 (TikTok / Reels / Shorts), enabled by ?vertical.
+   Same scenes, timing, music and voice; only the layout changes. Content is
+   kept inside TikTok's safe area: clear of the top bar (~200px), the caption
+   and account name at the bottom (~420px) and the buttons down the right.
+   The inline styles in the markup are the landscape layout, hence !important.
+=========================================================================== */
+html.vertical, html.vertical body, html.vertical #stage { width: 1080px !important; height: 1920px !important; }
+html.vertical #slash { width: 230% !important; }
+
+html.vertical #s1-est   { top: 900px !important; font-size: 34px !important; }
+html.vertical #s1-block { left: 80px !important; top: 720px !important; width: 920px !important; }
+html.vertical #s1-block .reveal-line:first-child { height: 60px !important; }
+html.vertical #s1-k     { font-size: 30px !important; line-height: 60px !important; }
+html.vertical #s1-block .reveal-line:last-child { height: 140px !important; }
+html.vertical #s1-t     { font-size: 124px !important; line-height: 140px !important; }
+html.vertical #s1-rule  { left: 80px !important; top: 945px !important; width: 900px !important; }
+html.vertical #s1-year  { left: 83px !important; top: 985px !important; font-size: 84px !important; }
+html.vertical #s1-sub   { left: 83px !important; top: 1100px !important; font-size: 32px !important; }
+
+html.vertical #s2-block { left: 70px !important; top: 640px !important; width: 940px !important; }
+html.vertical #s2-block .reveal-line { height: 114px !important; }
+html.vertical #s2-block .reveal-line:last-child { height: 64px !important; margin-top: 14px !important; }
+html.vertical #s2-l1, html.vertical #s2-l2 { font-size: 96px !important; line-height: 114px !important; }
+html.vertical #s2-l3    { font-size: 34px !important; line-height: 64px !important; }
+html.vertical #s2-b1    { left: 36px !important; top: 600px !important; }
+html.vertical #s2-b2    { right: 36px !important; bottom: auto !important; top: 1000px !important; }
+
+html.vertical #s3-big   { left: 30px !important; top: 170px !important; font-size: 420px !important; }
+html.vertical #s3-head  { left: 80px !important; top: 260px !important; width: 920px !important; }
+
+html.vertical #s4-shade, html.vertical #s5-shade { background: rgba(10,25,47,.86) !important; }
+html.vertical #s4-head  { left: 80px !important; top: 300px !important; }
+html.vertical #s4-list  { left: 80px !important; top: 540px !important; width: 920px !important; }
+html.vertical #s4-list > div { font-size: 37px !important; margin-bottom: 74px !important; }
+
+html.vertical #s5-head  { left: 80px !important; top: 300px !important; }
+html.vertical .reason   { left: 70px !important; width: 940px !important; padding: 24px 28px !important; gap: 24px !important; }
+html.vertical .reason .rt { font-size: 38px !important; }
+
+html.vertical #s6-head  { top: 300px !important; }
+html.vertical #s6-line  { left: 177px !important; top: 590px !important; width: 6px !important; height: 780px !important; transform-origin: center top !important; }
+html.vertical .step     { width: auto !important; display: flex !important; align-items: center !important; gap: 70px !important; text-align: left !important; }
+html.vertical .step .dot { width: 100px !important; height: 100px !important; font-size: 56px !important; margin: 0 !important; flex: 0 0 auto; }
+html.vertical .step .st { margin-top: 0 !important; font-size: 42px !important; }
+html.vertical .step .st br { display: none; }
+
+html.vertical #s7-head  { left: 80px !important; top: 300px !important; }
+html.vertical #s7-rule  { left: 80px !important; top: 1420px !important; width: 900px !important; }
+
+html.vertical #s8-cap   { left: 80px !important; bottom: 470px !important; }
+html.vertical #s8 .bracket.tr { right: 60px !important; top: 210px !important; }
+html.vertical #s8 .bracket.bl { left: 60px !important; bottom: 430px !important; }
+
+html.vertical #s9-logo  { top: 380px !important; }
+html.vertical #s9-name  { top: 620px !important; }
+html.vertical #s9-title { font-size: 76px !important; }
+html.vertical #s9-line  { top: 760px !important; }
+html.vertical #s9-contact { top: 830px !important; gap: 26px !important; }
+html.vertical .contact-row { width: 880px !important; font-size: 46px !important; gap: 24px !important; }
+html.vertical .contact-row .ic { width: 86px !important; height: 64px !important; font-size: 26px !important; }
+html.vertical #s9 .bracket.tl { left: 60px !important; top: 240px !important; }
+html.vertical #s9 .bracket.tr { right: 60px !important; top: 240px !important; }
+html.vertical #s9 .bracket.bl { left: 60px !important; bottom: 430px !important; }
+html.vertical #s9 .bracket.br { right: 60px !important; bottom: 430px !important; }
 </style>
 <script src="timeline.js"></script>
 </head>
@@ -271,7 +337,7 @@ html, body {
         <div class="plate graded" id="s2-plate" style="background-image:url('../images/works/recycling-conveyor-equipment.jpg')"></div>
         <div class="tint"></div>
         <div class="scanlines"></div>
-        <div style="position:absolute; left:150px; top:330px; width:1650px;">
+        <div id="s2-block" style="position:absolute; left:150px; top:330px; width:1650px;">
             <div class="reveal-line" style="height:168px;">
                 <span id="s2-l1" class="huge" style="font-size:150px; line-height:168px;">รับทำสายพานลำเลียง</span>
             </div>
@@ -310,7 +376,7 @@ html, body {
     <!-- 4 ─ Product range -------------------------------------------------- -->
     <section class="scene" id="s4">
         <div class="plate graded" id="s4-plate" style="background-image:url('../images/works/roller-conveyor-system.jpg')"></div>
-        <div style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,25,47,.97) 36%, rgba(10,25,47,.35) 100%);"></div>
+        <div id="s4-shade" style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,25,47,.97) 36%, rgba(10,25,47,.35) 100%);"></div>
         <div class="scanlines"></div>
         <div id="s4-head" style="position:absolute; left:130px; top:120px;">
             <div class="kicker" style="font-size:28px;">PRODUCT RANGE</div>
@@ -322,7 +388,7 @@ html, body {
     <!-- 5 ─ Why us — over the breakdown, so it moves slower ----------------- -->
     <section class="scene" id="s5">
         <div class="plate graded" id="s5-plate" style="background-image:url('../images/works/conveyor-belt-line.jpg')"></div>
-        <div style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,25,47,.96) 45%, rgba(10,25,47,.55) 100%);"></div>
+        <div id="s5-shade" style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,25,47,.96) 45%, rgba(10,25,47,.55) 100%);"></div>
         <div class="grid-overlay"></div>
         <div id="s5-head" style="position:absolute; left:130px; top:110px;">
             <div class="kicker" style="font-size:28px;">WHY BSS</div>
@@ -378,7 +444,7 @@ html, body {
         <img id="s9-logo" src="../logo.png" alt=""
              style="position:absolute; left:50%; top:170px; width:190px; height:190px; margin-left:-95px; border-radius:20px;">
         <div id="s9-name" style="position:absolute; left:0; right:0; top:400px; text-align:center;">
-            <div class="huge" style="font-size:112px;">BSS <span class="orange">SOLUTION</span>
+            <div class="huge" id="s9-title" style="font-size:112px;">BSS <span class="orange">SOLUTION</span>
                 <span style="font-family:'Barlow Condensed',sans-serif; letter-spacing:.1em;">(1978)</span></div>
         </div>
         <div id="s9-line" style="position:absolute; left:50%; top:556px; width:0; height:6px;
@@ -406,6 +472,8 @@ html, body {
 'use strict';
 
 const T = window.TIMELINE;
+const VERT = /vertical/.test(location.search);
+if (VERT) document.documentElement.classList.add('vertical');
 const { FPS, BEAT, BAR, TOTAL, SCENES, SECTIONS, MONTAGE_CUTS } = T;
 
 /* ---- easing ---------------------------------------------------------- */
@@ -499,7 +567,9 @@ function build() {
         const el = document.createElement('div');
         el.className = 'card';
         el.id = 'card' + i;
-        el.style.cssText = `left:${980 + col * 440}px; top:${150 + row * 400}px; width:400px; height:360px;`;
+        el.style.cssText = VERT
+            ? `left:${70 + col * 490}px; top:${880 + row * 330}px; width:450px; height:300px;`
+            : `left:${980 + col * 440}px; top:${150 + row * 400}px; width:400px; height:360px;`;
         el.innerHTML =
             `<div class="ph" style="background-image:url('../images/works/${s.img}')"></div>` +
             `<div class="no">${s.n}</div><div class="lb">${s.label}</div>`;
@@ -520,7 +590,7 @@ function build() {
         const el = document.createElement('div');
         el.className = 'reason';
         el.id = 'rs' + i;
-        el.style.top = (330 + i * 160) + 'px';
+        el.style.top = (VERT ? 540 + i * 240 : 330 + i * 160) + 'px';
         el.innerHTML = `<div class="rn">0${i + 1}</div><div class="rt">${t}</div>`;
         reasons.appendChild(el);
     });
@@ -530,7 +600,8 @@ function build() {
         const el = document.createElement('div');
         el.className = 'step';
         el.id = 'stp' + i;
-        el.style.left = (290 + i * 335 - 150) + 'px';
+        if (VERT) { el.style.left = '130px'; el.style.top = (540 + i * 190) + 'px'; }
+        else el.style.left = (290 + i * 335 - 150) + 'px';
         el.innerHTML = `<div class="dot"><span>${i + 1}</span></div><div class="st">${t}</div>`;
         steps.appendChild(el);
     });
@@ -540,8 +611,8 @@ function build() {
         const el = document.createElement('div');
         el.className = 'stat';
         el.id = 'st' + i;
-        el.style.left = s.x + 'px';
-        el.style.top  = '440px';
+        el.style.left = (VERT ? 80 : s.x) + 'px';
+        el.style.top  = (VERT ? 540 + i * 290 : 440) + 'px';
         el.innerHTML = `<div class="num"><span id="stv${i}">0</span><em>${s.suffix}</em></div>
                         <div class="cap">${s.cap}</div>`;
         stats.appendChild(el);
@@ -682,7 +753,7 @@ function scene6(l) {
         el.style.transform = `scale(${lerp(.4, 1, t)})`;
     });
     const lineT = inv(l, first, first + BEAT * (STEPS.length - 1));
-    $('s6-line').style.transform = `scaleX(${lineT})`;
+    $('s6-line').style.transform = VERT ? `scaleY(${lineT})` : `scaleX(${lineT})`;
 }
 
 function scene7(l, len) {
@@ -739,7 +810,7 @@ function scene9(l) {
     $('s9-name').style.opacity   = inv(l, 16, 30);
     $('s9-name').style.transform = `translateY(${(1 - n) * 40}px)`;
 
-    $('s9-line').style.width = (outExpo(inv(l, 32, 62)) * 620) + 'px';
+    $('s9-line').style.width = (outExpo(inv(l, 32, 62)) * (VERT ? 520 : 620)) + 'px';
 
     // one row per half beat
     const rows = $('s9-contact').children;
