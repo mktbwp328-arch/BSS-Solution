@@ -250,7 +250,7 @@ html, body {
         <div class="tint"></div>
         <div class="grid-overlay"></div>
         <div id="s1-est" style="position:absolute; left:0; right:0; top:500px; text-align:center;
-             font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:40px; letter-spacing:.6em; color:var(--orange);">EST. 1978</div>
+             font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:40px; letter-spacing:.6em; color:var(--orange);">ENGINEERED TO MOVE</div>
         <div class="rule" id="s1-rule" style="left:360px; top:742px; height:7px; width:1200px;"></div>
         <div id="s1-block" style="position:absolute; left:360px; top:430px; width:1300px;">
             <div class="reveal-line" style="height:86px;">
@@ -262,8 +262,8 @@ html, body {
         </div>
         <div id="s1-year" style="position:absolute; left:363px; top:778px; font-family:'Barlow Condensed',sans-serif;
              font-weight:800; font-size:92px; letter-spacing:.16em; color:#fff;">1978</div>
-        <div id="s1-sub" style="position:absolute; left:640px; top:806px; font-size:30px; font-weight:600;
-             color:rgba(230,241,255,.7);">ประสบการณ์ตั้งแต่ปี 2521</div>
+        <div id="s1-sub" style="position:absolute; left:640px; top:806px; font-size:34px; font-weight:600;
+             color:rgba(230,241,255,.7);">บริษัท บีเอสเอส โซลูชั่น (1978) จำกัด</div>
     </section>
 
     <!-- 2 ─ Hook — drop A lands on this cut -------------------------------- -->
@@ -351,8 +351,8 @@ html, body {
         <div style="position:absolute; inset:0; background:rgba(10,25,47,.9);"></div>
         <div class="grid-overlay"></div>
         <div id="s7-head" style="position:absolute; left:130px; top:150px;">
-            <div class="kicker" style="font-size:28px;">SINCE 1978</div>
-            <div class="huge" style="font-size:88px; margin-top:12px;">ประสบการณ์<span class="orange">ที่สั่งสม</span></div>
+            <div class="kicker" style="font-size:28px;">TRACK RECORD</div>
+            <div class="huge" style="font-size:88px; margin-top:12px;">ผลงานที่<span class="orange">พิสูจน์แล้ว</span></div>
         </div>
         <div id="s7-stats"></div>
         <div class="rule" id="s7-rule" style="left:130px; top:720px; height:6px; width:1660px;"></div>
@@ -459,9 +459,11 @@ const STEPS = [
 ];
 
 const STATS = [
-    { v: 45,  suffix: '+', cap: 'ปีของประสบการณ์',   x: 130  },
-    { v: 500, suffix: '+', cap: 'โปรเจกต์ที่ส่งมอบ',  x: 740  },
-    { v: 18,  suffix: '',  cap: 'ประเภทระบบลำเลียง', x: 1350 }
+    // "1978" is part of the company name, not a founding year — so no
+    // years-of-experience figure. Every number here is stated on the site.
+    { v: 500, suffix: '+', cap: 'โปรเจกต์ที่ส่งมอบ',  x: 130  },
+    { v: 18,  suffix: '',  cap: 'ประเภทระบบลำเลียง', x: 740  },
+    { v: 6,   suffix: '',  cap: 'จังหวัดที่ให้บริการ', x: 1350 }
 ];
 
 /* Every shot is a BSS workshop or site photo. Stock and CG images in
@@ -560,7 +562,7 @@ function build() {
 function scene1(l, len) {
     $('s1-plate').style.transform = `scale(${lerp(1.18, 1.02, outCubic(l / len))})`;
 
-    // Bar 0–1: "EST. 1978" alone, then it gives way to the full lockup
+    // Bar 0–1: the tagline alone, then it gives way to the full lockup
     const est = inv(l, 6, 30) * (1 - inv(l, 100, 116));
     $('s1-est').style.opacity = est;
     $('s1-est').style.letterSpacing = lerp(1.1, .6, outCubic(inv(l, 6, 60))) + 'em';
