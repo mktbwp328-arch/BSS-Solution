@@ -120,19 +120,24 @@ node set-domain.js https://www.bsssolution1978.com
 
 ## วิดีโอ Motion Graphic
 
-วิดีโอแนะนำบริษัท 30 วินาที 1920×1080 สำหรับลง Facebook / YouTube
+วิดีโอแนะนำบริษัท **60 วินาที** 1920×1080 พร้อมเพลงประกอบ สำหรับลง Facebook / YouTube
 
 ```bash
 node video/render.js
 ```
 
-ได้ไฟล์ `video/bss-motion.mp4` (ใช้เวลาเรนเดอร์ราว 2 นาที)
+ได้ไฟล์ `video/bss-motion.mp4` (ใช้เวลาเรนเดอร์ราว 4 นาที)
 
-- แก้ข้อความ/รูป/จังหวะ ที่ `video/scene.html` — เนื้อหาอยู่ใน `SERVICES`, `RANGE`, `STATS`, `MONTAGE`
-  ช่วงเวลาแต่ละฉากอยู่ใน `SCENES` (หน่วยเป็นเฟรม, 30 เฟรม = 1 วินาที)
+| ไฟล์ | หน้าที่ |
+|---|---|
+| `video/timeline.js` | **จังหวะเวลาของทั้งภาพและเพลง** — ความยาวแต่ละฉาก (หน่วยเป็นห้องเพลง 1 ห้อง = 2 วินาที) แก้ที่นี่ที่เดียว ภาพและเพลงขยับตามกันเอง |
+| `video/scene.html` | ภาพทั้งหมด — ข้อความอยู่ใน `SERVICES`, `RANGE`, `REASONS`, `STEPS`, `STATS`, `MONTAGE` |
+| `video/music.js` | เพลงประกอบ สังเคราะห์ด้วยโค้ด (E minor, 120 BPM) — **เป็นเพลงต้นฉบับ ไม่ติดลิขสิทธิ์** ไม่โดน Content ID |
+| `video/render.js` | สร้างเพลง → เรนเดอร์ภาพทีละเฟรม → รวมเป็น MP4 |
+
 - ดูเฟรมเดี่ยวก่อนเรนเดอร์จริง: `node video/render.js --preview 80,300,700` → `video/preview/`
 - ใช้ Chrome ที่ติดตั้งในเครื่อง ไม่ต้องดาวน์โหลด Chromium
-- ไฟล์ MP4 ไม่ถูก commit และไม่ขึ้นเว็บ (อยู่ใน `.gitignore` / `.vercelignore`)
+- MP4 และ WAV ไม่ถูก commit และไม่ขึ้นเว็บ (อยู่ใน `.gitignore` / `.vercelignore`)
 - ฉาก "ผลงานของเรา" ใช้**เฉพาะรูปงานจริงของบริษัท** — รูปใน `images/works/` บางรูปเป็นภาพ stock/CG
   (เช่น `screw-conveyor.jpg`, `industrial-conveyor-belt.jpg`, `recycling-sorting-system.jpg`)
   ถ้าเพิ่มรูปในฉากนั้น ให้ใช้รูปที่ถ่ายจากงานจริงเท่านั้น

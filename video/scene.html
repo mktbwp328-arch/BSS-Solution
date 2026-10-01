@@ -13,6 +13,9 @@
    number by render(f). The renderer can then seek to frame 417, screenshot,
    and get exactly the same pixels every run, however long the capture takes.
    A wall-clock animation would drift and tear under a slow screenshot loop.
+
+   Scene timing comes from timeline.js, which the soundtrack also reads, so
+   every cut sits on the beat the music puts an impact on.
 --------------------------------------------------------------------------- */
 
 :root {
@@ -41,6 +44,7 @@ html, body {
     height: 1080px;
     overflow: hidden;
     background: var(--navy);
+    transform-origin: 50% 50%;
 }
 
 .scene {
@@ -152,19 +156,7 @@ html, body {
     background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.38) 100%);
 }
 
-/* RGB split: two tinted copies ride either side of the original on a cut */
-.glitch { position: relative; }
-.glitch .g-r, .glitch .g-c {
-    position: absolute;
-    inset: 0;
-    mix-blend-mode: screen;
-    pointer-events: none;
-}
-.glitch .g-r { color: #ff0040; }
-.glitch .g-c { color: #00e5ff; }
-
 /* ---- Rapid-fire service cards ------------------------------------------- */
-.cards { position: absolute; inset: 0; }
 .card {
     position: absolute;
     overflow: hidden;
@@ -185,6 +177,45 @@ html, body {
     font-size: 30px; color: var(--orange); letter-spacing: .08em;
 }
 
+/* ---- Why us -------------------------------------------------------------- */
+.reason {
+    position: absolute;
+    left: 130px;
+    width: 1180px;
+    display: flex;
+    align-items: center;
+    gap: 34px;
+    padding: 26px 34px;
+    background: linear-gradient(90deg, rgba(255,140,0,.13), rgba(255,140,0,0) 80%);
+    border-left: 6px solid var(--orange);
+}
+.reason .rn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 64px; line-height: 1;
+    color: var(--orange); width: 74px; flex: 0 0 auto;
+}
+.reason .rt { font-size: 44px; font-weight: 700; line-height: 1.2; }
+
+/* ---- Process ------------------------------------------------------------- */
+.step {
+    position: absolute;
+    top: 470px;
+    width: 300px;
+    text-align: center;
+}
+.step .dot {
+    width: 128px; height: 128px;
+    margin: 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--navy);
+    border: 5px solid var(--orange);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 72px; color: #fff;
+    transform: rotate(45deg);
+}
+.step .dot span { transform: rotate(-45deg); }
+.step .st { margin-top: 56px; font-size: 36px; font-weight: 700; line-height: 1.25; }
+
 /* ---- Stat blocks -------------------------------------------------------- */
 .stat { position: absolute; text-align: left; }
 .stat .num {
@@ -195,31 +226,33 @@ html, body {
 .stat .cap { font-size: 26px; color: rgba(230,241,255,.72); margin-top: 10px; font-weight: 600; }
 
 /* ---- Montage ------------------------------------------------------------ */
-.strip { position: absolute; inset: 0; }
 .shot { position: absolute; inset: 0; background-size: cover; background-position: center;
         filter: saturate(.55) contrast(1.2) brightness(.72); }
 
-/* ---- Lower third / CTA -------------------------------------------------- */
-.contact-row { display: flex; align-items: center; gap: 18px; font-size: 34px; font-weight: 600; }
+/* ---- CTA ---------------------------------------------------------------- */
+.contact-row { display: flex; align-items: center; gap: 26px; font-size: 76px; font-weight: 700; }
 .contact-row .ic {
-    width: 54px; height: 54px; flex: 0 0 auto;
+    width: 96px; height: 96px; flex: 0 0 auto;
     display: flex; align-items: center; justify-content: center;
-    border: 2px solid var(--orange); color: var(--orange);
-    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 22px;
+    border: 4px solid var(--orange); color: var(--orange);
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 36px;
 }
 </style>
+<script src="timeline.js"></script>
 </head>
 <body>
 
 <div id="stage">
 
-    <!-- 1 ─ Logo slam ---------------------------------------------------- -->
+    <!-- 1 ─ Logo, over the intro build ----------------------------------- -->
     <section class="scene" id="s1">
         <div class="plate graded" id="s1-plate" style="background-image:url('../images/works/conveyor-belt-factory.jpg')"></div>
         <div class="tint"></div>
         <div class="grid-overlay"></div>
+        <div id="s1-est" style="position:absolute; left:0; right:0; top:500px; text-align:center;
+             font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:40px; letter-spacing:.6em; color:var(--orange);">EST. 1978</div>
         <div class="rule" id="s1-rule" style="left:360px; top:742px; height:7px; width:1200px;"></div>
-        <div style="position:absolute; left:360px; top:430px; width:1300px;">
+        <div id="s1-block" style="position:absolute; left:360px; top:430px; width:1300px;">
             <div class="reveal-line" style="height:86px;">
                 <span id="s1-k" class="kicker" style="font-size:44px; line-height:86px;">CONVEYOR SYSTEM SPECIALIST</span>
             </div>
@@ -233,14 +266,14 @@ html, body {
              color:rgba(230,241,255,.7);">ประสบการณ์ตั้งแต่ปี 2521</div>
     </section>
 
-    <!-- 2 ─ Hook ---------------------------------------------------------- -->
+    <!-- 2 ─ Hook — drop A lands on this cut -------------------------------- -->
     <section class="scene" id="s2">
         <div class="plate graded" id="s2-plate" style="background-image:url('../images/works/recycling-conveyor-equipment.jpg')"></div>
         <div class="tint"></div>
         <div class="scanlines"></div>
         <div style="position:absolute; left:150px; top:330px; width:1650px;">
             <div class="reveal-line" style="height:168px;">
-                <span id="s2-l1" class="huge glitch" style="font-size:150px; line-height:168px;">รับทำสายพานลำเลียง</span>
+                <span id="s2-l1" class="huge" style="font-size:150px; line-height:168px;">รับทำสายพานลำเลียง</span>
             </div>
             <div class="reveal-line" style="height:168px;">
                 <span id="s2-l2" class="huge" style="font-size:150px; line-height:168px;">ครบ<span class="orange">วงจร</span></span>
@@ -255,7 +288,7 @@ html, body {
         <div class="bracket br" id="s2-b2" style="right:110px; bottom:286px;"></div>
     </section>
 
-    <!-- 3 ─ Services, rapid fire ------------------------------------------ -->
+    <!-- 3 ─ Services ------------------------------------------------------- -->
     <section class="scene" id="s3">
         <div style="position:absolute; inset:0; background:var(--navy);"></div>
         <div class="grid-overlay"></div>
@@ -271,10 +304,10 @@ html, body {
                  color:rgba(230,241,255,.78);">จบในที่เดียว ตั้งแต่ออกแบบ<br>จนส่งมอบหน้างาน</div>
             <div class="rule" id="s3-rule" style="position:relative; margin-top:34px; height:6px; width:220px;"></div>
         </div>
-        <div class="cards" id="s3-cards"></div>
+        <div id="s3-cards"></div>
     </section>
 
-    <!-- 4 ─ Capability list ------------------------------------------------ -->
+    <!-- 4 ─ Product range -------------------------------------------------- -->
     <section class="scene" id="s4">
         <div class="plate graded" id="s4-plate" style="background-image:url('../images/works/roller-conveyor-system.jpg')"></div>
         <div style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,25,47,.97) 36%, rgba(10,25,47,.35) 100%);"></div>
@@ -286,49 +319,73 @@ html, body {
         <div id="s4-list" style="position:absolute; left:130px; top:330px; width:1000px;"></div>
     </section>
 
-    <!-- 5 ─ Numbers -------------------------------------------------------- -->
+    <!-- 5 ─ Why us — over the breakdown, so it moves slower ----------------- -->
     <section class="scene" id="s5">
-        <div class="plate graded" id="s5-plate" style="background-image:url('../images/works/chain-conveyor-system.jpg')"></div>
+        <div class="plate graded" id="s5-plate" style="background-image:url('../images/works/conveyor-belt-line.jpg')"></div>
+        <div style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,25,47,.96) 45%, rgba(10,25,47,.55) 100%);"></div>
+        <div class="grid-overlay"></div>
+        <div id="s5-head" style="position:absolute; left:130px; top:110px;">
+            <div class="kicker" style="font-size:28px;">WHY BSS</div>
+            <div class="huge" style="font-size:88px; margin-top:12px;">ทำไมต้อง <span class="orange">BSS</span></div>
+        </div>
+        <div id="s5-list"></div>
+    </section>
+
+    <!-- 6 ─ Process — drop B lands on this cut ----------------------------- -->
+    <section class="scene" id="s6">
+        <div style="position:absolute; inset:0; background:
+             radial-gradient(ellipse at 50% 55%, #132c4a 0%, var(--navy) 70%);"></div>
+        <div class="grid-overlay"></div>
+        <div id="s6-head" style="position:absolute; left:0; right:0; top:150px; text-align:center;">
+            <div class="kicker" style="font-size:28px;">PROCESS</div>
+            <div class="huge" style="font-size:88px; margin-top:12px;">ขั้นตอน<span class="orange">การทำงาน</span></div>
+        </div>
+        <!-- the line the steps hang on; it draws in step by step -->
+        <div class="rule" id="s6-line" style="left:290px; top:532px; height:6px; width:1340px;"></div>
+        <div id="s6-steps"></div>
+    </section>
+
+    <!-- 7 ─ Numbers -------------------------------------------------------- -->
+    <section class="scene" id="s7">
+        <div class="plate graded" id="s7-plate" style="background-image:url('../images/works/chain-conveyor-system.jpg')"></div>
         <div style="position:absolute; inset:0; background:rgba(10,25,47,.9);"></div>
         <div class="grid-overlay"></div>
-        <div id="s5-head" style="position:absolute; left:130px; top:150px;">
+        <div id="s7-head" style="position:absolute; left:130px; top:150px;">
             <div class="kicker" style="font-size:28px;">SINCE 1978</div>
             <div class="huge" style="font-size:88px; margin-top:12px;">ประสบการณ์<span class="orange">ที่สั่งสม</span></div>
         </div>
-        <div id="s5-stats"></div>
-        <div class="rule" id="s5-rule" style="left:130px; top:720px; height:6px; width:1660px;"></div>
+        <div id="s7-stats"></div>
+        <div class="rule" id="s7-rule" style="left:130px; top:720px; height:6px; width:1660px;"></div>
     </section>
 
-    <!-- 6 ─ Work montage ---------------------------------------------------- -->
-    <section class="scene" id="s6">
-        <div class="strip" id="s6-strip"></div>
+    <!-- 8 ─ Work montage — company photos only --------------------------- -->
+    <section class="scene" id="s8">
+        <div id="s8-strip" style="position:absolute; inset:0;"></div>
         <div style="position:absolute; inset:0; background:linear-gradient(0deg, rgba(10,25,47,.85), rgba(10,25,47,.05) 60%);"></div>
-        <div id="s6-cap" style="position:absolute; left:130px; bottom:140px;">
+        <div id="s8-cap" style="position:absolute; left:130px; bottom:140px;">
             <div class="kicker" style="font-size:26px;">OUR WORK</div>
-            <div class="huge" id="s6-label" style="font-size:92px; margin-top:10px;">ผลงาน<span class="orange">ของเรา</span></div>
+            <div class="huge" style="font-size:92px; margin-top:10px;">ผลงาน<span class="orange">ของเรา</span></div>
         </div>
         <div class="bracket tr" style="right:110px; top:110px;"></div>
         <div class="bracket bl" style="left:110px; bottom:110px;"></div>
     </section>
 
-    <!-- 7 ─ CTA -------------------------------------------------------------- -->
-    <section class="scene" id="s7">
+    <!-- 9 ─ Contact -------------------------------------------------------- -->
+    <section class="scene" id="s9">
         <div style="position:absolute; inset:0; background:
-             radial-gradient(ellipse at 50% 40%, #16314f 0%, var(--navy) 62%);"></div>
+             radial-gradient(ellipse at 50% 42%, #16314f 0%, var(--navy) 62%);"></div>
         <div class="grid-overlay"></div>
-        <img id="s7-logo" src="../logo.png" alt=""
-             style="position:absolute; left:50%; top:196px; width:168px; height:168px; margin-left:-84px; border-radius:18px;">
-        <div id="s7-name" style="position:absolute; left:0; right:0; top:410px; text-align:center;">
-            <div class="huge" style="font-size:104px;">BSS <span class="orange">SOLUTION</span>
+        <img id="s9-logo" src="../logo.png" alt=""
+             style="position:absolute; left:50%; top:170px; width:190px; height:190px; margin-left:-95px; border-radius:20px;">
+        <div id="s9-name" style="position:absolute; left:0; right:0; top:400px; text-align:center;">
+            <div class="huge" style="font-size:112px;">BSS <span class="orange">SOLUTION</span>
                 <span style="font-family:'Barlow Condensed',sans-serif; letter-spacing:.1em;">(1978)</span></div>
         </div>
-        <div id="s7-line" style="position:absolute; left:50%; top:556px; width:0; height:6px;
+        <div id="s9-line" style="position:absolute; left:50%; top:556px; width:0; height:6px;
              background:var(--orange); transform:translateX(-50%);"></div>
-        <div id="s7-contact" style="position:absolute; left:0; right:0; top:620px;
-             display:flex; flex-direction:column; align-items:center; gap:26px;">
+        <div id="s9-contact" style="position:absolute; left:0; right:0; top:640px;
+             display:flex; justify-content:center;">
             <div class="contact-row"><div class="ic">TEL</div><span>02-317-5470-3</span></div>
-            <div class="contact-row"><div class="ic">WEB</div><span>bsssolution1978.vercel.app</span></div>
-            <div class="contact-row"><div class="ic">AT</div><span>สมุทรปราการ · บริการทั่วประเทศ</span></div>
         </div>
         <div class="bracket tl" style="left:150px; top:150px;"></div>
         <div class="bracket tr" style="right:150px; top:150px;"></div>
@@ -346,21 +403,8 @@ html, body {
 (function () {
 'use strict';
 
-const FPS   = 30;
-const W     = 1920;
-
-/* Scene boundaries in frames. Cuts land on a steady ~3-4s pulse so the piece
-   has a beat even without music. */
-const SCENES = [
-    { id: 's1', from:   0, to: 108 },   //  0.0 – 3.6s   logo slam
-    { id: 's2', from: 108, to: 234 },   //  3.6 – 7.8s   hook
-    { id: 's3', from: 234, to: 390 },   //  7.8 – 13.0s  services
-    { id: 's4', from: 390, to: 510 },   // 13.0 – 17.0s  product range
-    { id: 's5', from: 510, to: 630 },   // 17.0 – 21.0s  numbers
-    { id: 's6', from: 630, to: 756 },   // 21.0 – 25.2s  montage
-    { id: 's7', from: 756, to: 900 }    // 25.2 – 30.0s  CTA
-];
-const TOTAL = 900;                       // 30.0s
+const T = window.TIMELINE;
+const { FPS, BEAT, BAR, TOTAL, SCENES, SECTIONS, MONTAGE_CUTS } = T;
 
 /* ---- easing ---------------------------------------------------------- */
 const clamp  = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -371,8 +415,8 @@ const inOutCubic = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
 const outBack = t => { const c = 1.9; return 1 + (c+1)*Math.pow(t-1,3) + c*Math.pow(t-1,2); };
 const lerp   = (a, b, t) => a + (b - a) * t;
 
-/* Deterministic pseudo-random: glitch must jitter the same way every run,
-   so Math.random() is out. */
+/* Deterministic pseudo-random: the glitch must jitter the same way every
+   run, so Math.random() is out. */
 function noise(seed) {
     const x = Math.sin(seed * 12.9898) * 43758.5453;
     return x - Math.floor(x);
@@ -397,23 +441,51 @@ const RANGE = [
     'Recycling & Sorting System'
 ];
 
+// Taken from the "ทำไมต้องเลือก" section of services.html — nothing new claimed
+const REASONS = [
+    'ออกแบบโดยวิศวกรเครื่องกล & ไฟฟ้า',
+    'ติดตั้งโดยช่างเทคนิคผู้ชำนาญการ',
+    'เทคโนโลยีสากล ในราคาคนไทย',
+    'บริการ Onsite หลังการขาย พร้อมอะไหล่ครบ'
+];
+
+// The five steps listed on services.html
+const STEPS = [
+    'ติดต่อเรา',
+    'สำรวจ<br>หน้างาน',
+    'เสนอแบบ<br>และราคา',
+    'ผลิตและ<br>ติดตั้ง',
+    'ทดสอบและ<br>ส่งมอบ'
+];
+
 const STATS = [
-    { v: 45,  suffix: '+', cap: 'ปีของประสบการณ์',  x: 130  },
-    { v: 500, suffix: '+', cap: 'โปรเจกต์ที่ส่งมอบ', x: 740  },
+    { v: 45,  suffix: '+', cap: 'ปีของประสบการณ์',   x: 130  },
+    { v: 500, suffix: '+', cap: 'โปรเจกต์ที่ส่งมอบ',  x: 740  },
     { v: 18,  suffix: '',  cap: 'ประเภทระบบลำเลียง', x: 1350 }
 ];
 
+/* Every shot is a BSS workshop or site photo. Stock and CG images in
+   images/works are left out on purpose: this scene is captioned as our work,
+   and that caption has to be true of every frame under it. */
 const MONTAGE = [
-    // Every shot here is a BSS workshop or site photo. Stock and CG images in
-    // images/works were left out on purpose — this scene is captioned as our
-    // work, and that caption has to be true of every frame under it.
     'roller-conveyor.jpg',
     'conveyor-belt-line.jpg',
     'chain-conveyor.jpg',
     'pvc-conveyor-belt-system.jpg',
     'conveyor-company-chonburi.jpg',
-    'conveying-system.jpg'
+    'conveying-system.jpg',
+    'conveyor-belt-factory.jpg',
+    'chain-conveyor-system.jpg',
+    'conveyor-belt.jpg',
+    'conveyor-installation-service.jpg',
+    'recycling-conveyor-equipment.jpg',
+    'conveyor-system.jpg',
+    'roller-conveyor-system.jpg',
+    'pvc-belt-conveyor.jpg',
+    'factory-shutdown-service.jpg'
 ];
+
+const scene = id => SCENES.find(s => s.id === id);
 
 /* ---- one-time DOM build ---------------------------------------------- */
 function build() {
@@ -423,10 +495,7 @@ function build() {
         const el = document.createElement('div');
         el.className = 'card';
         el.id = 'card' + i;
-        el.style.left   = (980 + col * 440) + 'px';
-        el.style.top    = (150 + row * 400) + 'px';
-        el.style.width  = '400px';
-        el.style.height = '360px';
+        el.style.cssText = `left:${980 + col * 440}px; top:${150 + row * 400}px; width:400px; height:360px;`;
         el.innerHTML =
             `<div class="ph" style="background-image:url('../images/works/${s.img}')"></div>` +
             `<div class="no">${s.n}</div><div class="lb">${s.label}</div>`;
@@ -442,7 +511,27 @@ function build() {
         list.appendChild(el);
     });
 
-    const stats = $('s5-stats');
+    const reasons = $('s5-list');
+    REASONS.forEach((t, i) => {
+        const el = document.createElement('div');
+        el.className = 'reason';
+        el.id = 'rs' + i;
+        el.style.top = (330 + i * 160) + 'px';
+        el.innerHTML = `<div class="rn">0${i + 1}</div><div class="rt">${t}</div>`;
+        reasons.appendChild(el);
+    });
+
+    const steps = $('s6-steps');
+    STEPS.forEach((t, i) => {
+        const el = document.createElement('div');
+        el.className = 'step';
+        el.id = 'stp' + i;
+        el.style.left = (290 + i * 335 - 150) + 'px';
+        el.innerHTML = `<div class="dot"><span>${i + 1}</span></div><div class="st">${t}</div>`;
+        steps.appendChild(el);
+    });
+
+    const stats = $('s7-stats');
     STATS.forEach((s, i) => {
         const el = document.createElement('div');
         el.className = 'stat';
@@ -454,7 +543,7 @@ function build() {
         stats.appendChild(el);
     });
 
-    const strip = $('s6-strip');
+    const strip = $('s8-strip');
     MONTAGE.forEach((img, i) => {
         const el = document.createElement('div');
         el.className = 'shot';
@@ -464,184 +553,239 @@ function build() {
     });
 }
 
-/* ---- per-scene rendering --------------------------------------------- */
+/* ---- per-scene rendering ----------------------------------------------
+   Each receives l, the frame number within its own scene, so a scene can be
+   moved or lengthened in timeline.js without touching its animation code. */
 
-function scene1(f, p) {
-    // Slow push in: the frame never sits still, which keeps a static plate alive
-    $('s1-plate').style.transform = `scale(${lerp(1.16, 1.03, outCubic(p))})`;
+function scene1(l, len) {
+    $('s1-plate').style.transform = `scale(${lerp(1.18, 1.02, outCubic(l / len))})`;
 
-    const k = outExpo(inv(f, 8, 30));
+    // Bar 0–1: "EST. 1978" alone, then it gives way to the full lockup
+    const est = inv(l, 6, 30) * (1 - inv(l, 100, 116));
+    $('s1-est').style.opacity = est;
+    $('s1-est').style.letterSpacing = lerp(1.1, .6, outCubic(inv(l, 6, 60))) + 'em';
+
+    const k = outExpo(inv(l, 112, 134));
     $('s1-k').style.transform = `translateY(${(1 - k) * 100}%)`;
 
-    const t = outExpo(inv(f, 16, 44));
+    // The name lands exactly on bar 2, where the music puts its first hit
+    const t = outExpo(inv(l, BAR * 2, BAR * 2 + 22));
     $('s1-t').style.transform = `translateY(${(1 - t) * 105}%)`;
 
-    const r = outExpo(inv(f, 34, 58));
-    $('s1-rule').style.transform = `scaleX(${r})`;
+    $('s1-rule').style.transform = `scaleX(${outExpo(inv(l, BAR * 2 + 12, BAR * 2 + 40))})`;
 
-    // The year snaps rather than eases — it should land like a stamp
-    const y = outBack(inv(f, 44, 66));
-    $('s1-year').style.transform = `scale(${lerp(1.5, 1, y)})`;
-    $('s1-year').style.opacity   = inv(f, 44, 56);
+    // The year snaps rather than eases — it should land like a stamp, on bar 3
+    const y = outBack(inv(l, BAR * 3, BAR * 3 + 18));
+    $('s1-year').style.transform = `scale(${lerp(1.6, 1, y)})`;
+    $('s1-year').style.opacity   = inv(l, BAR * 3, BAR * 3 + 8);
 
-    $('s1-sub').style.opacity   = inv(f, 60, 76);
-    $('s1-sub').style.transform = `translateX(${(1 - outCubic(inv(f, 60, 80))) * 40}px)`;
+    $('s1-sub').style.opacity   = inv(l, BAR * 3 + 12, BAR * 3 + 26);
+    $('s1-sub').style.transform = `translateX(${(1 - outCubic(inv(l, BAR * 3 + 12, BAR * 3 + 30))) * 40}px)`;
 }
 
-function scene2(f, p) {
-    const local = f - 108;
-    $('s2-plate').style.transform = `scale(${lerp(1.02, 1.14, p)})`;
+function scene2(l, len, f) {
+    $('s2-plate').style.transform = `scale(${lerp(1.02, 1.14, l / len)})`;
 
-    [['s2-l1', 6], ['s2-l2', 16], ['s2-l3', 30]].forEach(([id, delay]) => {
-        const t = outExpo(inv(local, delay, delay + 26));
+    [['s2-l1', 4], ['s2-l2', 14], ['s2-l3', 28]].forEach(([id, delay]) => {
+        const t = outExpo(inv(l, delay, delay + 26));
         $(id).style.transform = `translateY(${(1 - t) * 108}%)`;
     });
 
-    // RGB split: strongest right after the cut, gone within half a second
-    const g = clamp(1 - inv(local, 4, 20), 0, 1) * 14;
+    // RGB split: strongest right after the drop, gone within half a second
+    const g = clamp(1 - inv(l, 4, 20), 0, 1) * 14;
     const j = (noise(f) - .5) * g;
-    const l1 = $('s2-l1');
-    l1.style.textShadow = g > .4
+    $('s2-l1').style.textShadow = g > .4
         ? `${j + g}px 0 rgba(255,0,64,.85), ${-j - g}px 0 rgba(0,229,255,.85), 0 18px 50px rgba(0,0,0,.55)`
         : '0 18px 50px rgba(0,0,0,.55)';
 
-    const bb = outExpo(inv(local, 20, 48));
+    const bb = outExpo(inv(l, 20, 48));
     $('s2-b1').style.opacity = bb;
     $('s2-b2').style.opacity = bb;
     $('s2-b1').style.transform = `translate(${(1 - bb) * -40}px, ${(1 - bb) * -40}px)`;
     $('s2-b2').style.transform = `translate(${(1 - bb) * 40}px, ${(1 - bb) * 40}px)`;
 }
 
-function scene3(f) {
-    const local = f - 234;
-    const h = outExpo(inv(local, 4, 28));
+function scene3(l, len) {
+    const h = outExpo(inv(l, 4, 28));
     $('s3-head').style.transform = `translateX(${(1 - h) * -60}px)`;
     $('s3-head').style.opacity   = h;
 
     // The numeral drifts slowly the other way — parallax against the heading
-    const b = outCubic(inv(local, 0, 40));
+    const b = outCubic(inv(l, 0, 40));
     $('s3-big').style.opacity   = b;
-    $('s3-big').style.transform = `translateX(${lerp(-80, 0, b) + inv(local, 40, 156) * 24}px)`;
+    $('s3-big').style.transform = `translateX(${lerp(-80, 0, b) + inv(l, 40, len) * 24}px)`;
 
-    $('s3-sub').style.opacity  = inv(local, 20, 38);
-    $('s3-rule').style.transform = `scaleX(${outExpo(inv(local, 26, 50))})`;
+    $('s3-sub').style.opacity  = inv(l, 20, 38);
+    $('s3-rule').style.transform = `scaleX(${outExpo(inv(l, 26, 50))})`;
 
-    // Cards punch in one after another, 11 frames apart — fast enough to feel
-    // like a burst, slow enough to read each label
+    // One card per beat — the grid fills in time with the kick
     SERVICES.forEach((_, i) => {
-        const start = 18 + i * 11;
-        const t  = outBack(inv(local, start, start + 20));
-        const op = inv(local, start, start + 8);
+        const start = BEAT * (i + 1);
+        const t  = outBack(inv(l, start, start + 18));
         const el = $('card' + i);
-        el.style.opacity   = op;
+        el.style.opacity   = inv(l, start, start + 6);
         el.style.transform = `translateY(${(1 - t) * 70}px) scale(${lerp(.86, 1, t)})`;
-        // Slow drift afterwards so the grid is never fully frozen
-        const drift = inv(local, start + 20, 156) * 10;
-        el.querySelector('.ph').style.transform = `scale(${1.08 + drift * .004})`;
+        el.querySelector('.ph').style.transform = `scale(${1.08 + inv(l, start + 18, len) * .05})`;
     });
 }
 
-function scene4(f) {
-    const local = f - 390;
-    $('s4-plate').style.transform = `scale(${lerp(1.14, 1.02, outCubic(inv(local, 0, 120)))})`;
+function scene4(l, len) {
+    $('s4-plate').style.transform = `scale(${lerp(1.14, 1.02, outCubic(l / len))})`;
 
-    const h = outExpo(inv(local, 4, 26));
+    const h = outExpo(inv(l, 4, 26));
     $('s4-head').style.opacity   = h;
     $('s4-head').style.transform = `translateY(${(1 - h) * -34}px)`;
 
+    // A line every half beat: fast, but each one still gets read
     RANGE.forEach((_, i) => {
-        const start = 16 + i * 9;
-        const t = outExpo(inv(local, start, start + 22));
+        const start = 15 + i * (BEAT / 2 + 1);
+        const t = outExpo(inv(l, start, start + 20));
         const el = $('rg' + i);
-        el.style.opacity   = inv(local, start, start + 10);
+        el.style.opacity   = inv(l, start, start + 8);
         el.style.transform = `translateX(${(1 - t) * -56}px)`;
     });
 }
 
-function scene5(f) {
-    const local = f - 510;
-    const hd = outExpo(inv(local, 2, 24));
-    $('s5-head').style.opacity   = hd;
-    $('s5-head').style.transform = `translateY(${(1 - hd) * -30}px)`;
-    STATS.forEach((s, i) => {
-        const start = 8 + i * 14;
-        const t  = inOutCubic(inv(local, start, start + 44));
-        const el = $('st' + i);
-        el.style.opacity   = inv(local, start, start + 12);
-        el.style.transform = `translateY(${(1 - outExpo(inv(local, start, start + 26))) * 50}px)`;
-        $('stv' + i).textContent = Math.round(s.v * t);
+function scene5(l, len) {
+    // Breakdown: everything here eases in over longer spans than elsewhere
+    $('s5-plate').style.transform = `scale(${lerp(1.04, 1.12, l / len)})`;
+
+    const h = outExpo(inv(l, 2, 30));
+    $('s5-head').style.opacity   = h;
+    $('s5-head').style.transform = `translateY(${(1 - h) * -30}px)`;
+
+    REASONS.forEach((_, i) => {
+        const start = 16 + i * 18;
+        const t = outExpo(inv(l, start, start + 30));
+        const el = $('rs' + i);
+        el.style.opacity   = inv(l, start, start + 14);
+        el.style.transform = `translateX(${(1 - t) * -80}px)`;
     });
-    $('s5-rule').style.transform = `scaleX(${outExpo(inv(local, 40, 86))})`;
-    $('s5-plate').style.transform = `scale(${lerp(1.0, 1.1, inv(local, 0, 120))})`;
 }
 
-function scene6(f) {
-    const local = f - 630;
-    const per   = 21;                         // ~0.7s per shot — a real burst
-    const idx   = Math.min(MONTAGE.length - 1, (local / per) | 0);
+function scene6(l) {
+    const h = outExpo(inv(l, 2, 26));
+    $('s6-head').style.opacity   = h;
+    $('s6-head').style.transform = `translateY(${(1 - h) * -30}px)`;
+
+    // One step per beat, the connecting line racing ahead to meet each one
+    const first = BEAT;
+    STEPS.forEach((_, i) => {
+        const start = first + i * BEAT;
+        const t = outBack(inv(l, start, start + 14));
+        const el = $('stp' + i);
+        el.style.opacity   = inv(l, start, start + 5);
+        el.style.transform = `scale(${lerp(.4, 1, t)})`;
+    });
+    const lineT = inv(l, first, first + BEAT * (STEPS.length - 1));
+    $('s6-line').style.transform = `scaleX(${lineT})`;
+}
+
+function scene7(l, len) {
+    const hd = outExpo(inv(l, 2, 24));
+    $('s7-head').style.opacity   = hd;
+    $('s7-head').style.transform = `translateY(${(1 - hd) * -30}px)`;
+
+    STATS.forEach((s, i) => {
+        const start = BEAT + i * BEAT;
+        const t  = inOutCubic(inv(l, start, start + 50));
+        const el = $('st' + i);
+        el.style.opacity   = inv(l, start, start + 10);
+        el.style.transform = `translateY(${(1 - outExpo(inv(l, start, start + 24))) * 50}px)`;
+        $('stv' + i).textContent = Math.round(s.v * t);
+    });
+    $('s7-rule').style.transform  = `scaleX(${outExpo(inv(l, 50, 96))})`;
+    $('s7-plate').style.transform = `scale(${lerp(1.0, 1.1, l / len)})`;
+}
+
+function scene8(l, len, f) {
+    // Which cut are we in? MONTAGE_CUTS are absolute frames from timeline.js
+    let idx = 0;
+    for (let i = 0; i < MONTAGE_CUTS.length; i++) if (f >= MONTAGE_CUTS[i]) idx = i;
+    const cutStart = MONTAGE_CUTS[idx];
+    const cutEnd   = MONTAGE_CUTS[idx + 1] || (scene('s8').to);
+    const shot     = idx % MONTAGE.length;
 
     MONTAGE.forEach((_, i) => {
         const el = $('sh' + i);
-        const on = i === idx;
+        const on = i === shot;
         el.style.opacity = on ? 1 : 0;
         if (on) {
-            const t = (local - i * per) / per;
-            // Alternate push-in and pull-back so consecutive cuts do not
-            // feel like one continuous move
-            el.style.transform = i % 2
-                ? `scale(${lerp(1.16, 1.04, t)})`
-                : `scale(${lerp(1.04, 1.16, t)})`;
+            const t = (f - cutStart) / (cutEnd - cutStart);
+            // Alternate push-in and pull-back so consecutive cuts do not read
+            // as one continuous move
+            el.style.transform = idx % 2
+                ? `scale(${lerp(1.18, 1.05, t)})`
+                : `scale(${lerp(1.05, 1.18, t)})`;
         }
     });
 
-    const c = outExpo(inv(local, 6, 30));
-    $('s6-cap').style.opacity   = c;
-    $('s6-cap').style.transform = `translateY(${(1 - c) * 44}px)`;
+
+    const c = outExpo(inv(l, 6, 30));
+    $('s8-cap').style.opacity   = c;
+    $('s8-cap').style.transform = `translateY(${(1 - c) * 44}px)`;
 }
 
-function scene7(f) {
-    const local = f - 756;
-    const l = outBack(inv(local, 4, 34));
-    $('s7-logo').style.opacity   = inv(local, 4, 18);
-    $('s7-logo').style.transform = `scale(${lerp(.5, 1, l)})`;
+function scene9(l) {
+    const lg = outBack(inv(l, 2, 30));
+    $('s9-logo').style.opacity   = inv(l, 2, 14);
+    $('s9-logo').style.transform = `scale(${lerp(.4, 1, lg)})`;
 
-    const n = outExpo(inv(local, 18, 46));
-    $('s7-name').style.opacity   = inv(local, 18, 32);
-    $('s7-name').style.transform = `translateY(${(1 - n) * 40}px)`;
+    const n = outExpo(inv(l, 16, 44));
+    $('s9-name').style.opacity   = inv(l, 16, 30);
+    $('s9-name').style.transform = `translateY(${(1 - n) * 40}px)`;
 
-    $('s7-line').style.width = (outExpo(inv(local, 34, 64)) * 560) + 'px';
+    $('s9-line').style.width = (outExpo(inv(l, 32, 62)) * 620) + 'px';
 
-    const rows = $('s7-contact').children;
-    for (let i = 0; i < rows.length; i++) {
-        const start = 46 + i * 10;
-        const t = outExpo(inv(local, start, start + 24));
-        rows[i].style.opacity   = inv(local, start, start + 12);
-        rows[i].style.transform = `translateY(${(1 - t) * 30}px)`;
-    }
+    const c = outExpo(inv(l, 44, 70));
+    $('s9-contact').style.opacity   = inv(l, 44, 58);
+    $('s9-contact').style.transform = `translateY(${(1 - c) * 34}px)`;
 }
 
-const RENDERERS = { s1: scene1, s2: scene2, s3: scene3, s4: scene4, s5: scene5, s6: scene6, s7: scene7 };
+const RENDERERS = { s1: scene1, s2: scene2, s3: scene3, s4: scene4, s5: scene5,
+                    s6: scene6, s7: scene7, s8: scene8, s9: scene9 };
 
 /* ---- transitions between scenes --------------------------------------- */
 function transitions(f) {
-    const slash = $('slash');
-    const flash = $('flash');
-
-    // Default: parked off-screen left
     let x = -130, flashOp = 0;
 
     for (let i = 1; i < SCENES.length; i++) {
         const cut = SCENES[i].from;
         const a = cut - 11, b = cut + 11;        // 22 frames ≈ 0.73s
         if (f >= a && f <= b) {
-            const t = inv(f, a, b);
-            x = lerp(-130, 130, inOutCubic(t));
-            // Two-frame blow-out exactly on the cut sells the impact
-            if (Math.abs(f - cut) <= 1) flashOp = .3 - Math.abs(f - cut) * .14;
+            x = lerp(-130, 130, inOutCubic(inv(f, a, b)));
+            // Brief blow-out exactly on the cut sells the impact. The last
+            // cut, into the end card, gets the biggest hit.
+            const big = i === SCENES.length - 1 ? 1.6 : 1;
+            if (Math.abs(f - cut) <= 1) flashOp = (.3 - Math.abs(f - cut) * .14) * big;
         }
     }
-    slash.style.transform = `skewX(-14deg) translateX(${x}%)`;
-    flash.style.opacity   = flashOp;
+
+    // The fast half of the montage gets a tiny flash on every cut
+    const s8 = scene('s8');
+    if (f >= s8.from + BAR * 3 && f < s8.to && MONTAGE_CUTS.indexOf(f) > -1) flashOp = Math.max(flashOp, .16);
+
+    $('slash').style.transform = `skewX(-14deg) translateX(${x}%)`;
+    $('flash').style.opacity   = flashOp;
+}
+
+/* ---- beat pump ----------------------------------------------------------
+   While the full beat plays, the whole frame bumps forward on every kick and
+   harder on each bar's downbeat. It is the cheapest way to make picture and
+   music feel like one thing. Quiet in the intro and breakdown on purpose. */
+function inSection(f, name) {
+    const [a, b] = SECTIONS[name];
+    return f >= a * BAR && f < b * BAR;
+}
+function beatPump(f) {
+    let s = 1;
+    if (inSection(f, 'dropA') || inSection(f, 'dropB')) {
+        const sinceBeat = f % BEAT;
+        const downbeat  = f % BAR < BEAT;
+        const amp = downbeat ? .018 : .008;
+        s = 1 + amp * Math.exp(-sinceBeat / 2.6);
+    }
+    $('stage').style.transform = `scale(${s})`;
 }
 
 /* ---- the single entry point the renderer drives ----------------------- */
@@ -651,9 +795,9 @@ function render(f) {
     const active = SCENES.find(s => f >= s.from && f < s.to) || SCENES[SCENES.length - 1];
     SCENES.forEach(s => $(s.id).classList.toggle('on', s.id === active.id));
 
-    const p = inv(f, active.from, active.to);
-    RENDERERS[active.id](f, p);
+    RENDERERS[active.id](f - active.from, active.to - active.from, f);
     transitions(f);
+    beatPump(f);
 }
 
 build();

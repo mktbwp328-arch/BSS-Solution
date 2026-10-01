@@ -10,13 +10,16 @@
  * stdin. Capture speed therefore cannot affect timing: a frame that takes
  * 400ms to grab still lands exactly 1/30s after the previous one in the video.
  *
+ * The soundtrack (music.js) is regenerated first and muxed in as AAC. Both
+ * read timeline.js, so the impacts sit on the cuts by construction.
+ *
  * Uses the Chrome already installed on this machine (puppeteer-core) instead of
  * downloading a bundled Chromium, and ffmpeg-static for encoding.
  */
 
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const puppeteer = require('puppeteer-core');
 const ffmpeg = require('ffmpeg-static');
 
@@ -104,13 +107,23 @@ async function preview(frames) {
 }
 
 async function full() {
+    // Regenerate the soundtrack every time. It takes about two seconds, and it
+    // means a scene length changed in timeline.js can never ship with music
+    // still timed to the old cuts.
+    const WAV = path.join(ROOT, 'soundtrack.wav');
+    execFileSync(process.execPath, [path.join(ROOT, 'music.js')], { stdio: 'inherit' });
+
     const { browser, page, total, fps } = await openScene();
 
     const enc = spawn(ffmpeg, [
         '-y',
         '-f', 'image2pipe', '-framerate', String(fps), '-i', '-',
+        '-i', WAV,
+        '-map', '0:v', '-map', '1:a',
         '-c:v', 'libx264', '-preset', 'slow', '-crf', '18',
         '-pix_fmt', 'yuv420p',          // the only pixel format every phone and Facebook play
+        '-c:a', 'aac', '-b:a', '192k',
+        '-shortest',
         '-movflags', '+faststart',      // moov atom first, so playback starts before download ends
         OUT
     ], { stdio: ['pipe', 'ignore', 'pipe'] });
