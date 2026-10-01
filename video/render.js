@@ -112,6 +112,8 @@ async function full() {
     // still timed to the old cuts.
     const WAV = path.join(ROOT, 'soundtrack.wav');
     execFileSync(process.execPath, [path.join(ROOT, 'music.js')], { stdio: 'inherit' });
+    const VOX = path.join(ROOT, 'voice.wav');
+    execFileSync(process.execPath, [path.join(ROOT, 'voice.js')], { stdio: 'inherit' });
 
     const { browser, page, total, fps } = await openScene();
 
@@ -119,7 +121,18 @@ async function full() {
         '-y',
         '-f', 'image2pipe', '-framerate', String(fps), '-i', '-',
         '-i', WAV,
-        '-map', '0:v', '-map', '1:a',
+        '-i', VOX,
+        // Music ducks under the voice: the voice drives a sidechain compressor
+        // on the music. Tuned by measurement: voice sits ~9.5 dB over the music while
+        // speaking — at ratio 6 / threshold 0.02 the music vanished (17.7 dB under) and comes
+        // straight back in the gaps.
+        '-filter_complex',
+        '[2:a]asplit=2[vo][key];' +
+        '[1:a]volume=0.8[mu];' +
+        '[mu][key]sidechaincompress=threshold=0.08:ratio=4:attack=15:release=350:makeup=1[duck];' +
+        '[vo]volume=1.25[v2];' +
+        '[duck][v2]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.84:level=false[a]',
+        '-map', '0:v', '-map', '[a]',
         '-c:v', 'libx264', '-preset', 'slow', '-crf', '18',
         '-pix_fmt', 'yuv420p',          // the only pixel format every phone and Facebook play
         '-c:a', 'aac', '-b:a', '192k',
