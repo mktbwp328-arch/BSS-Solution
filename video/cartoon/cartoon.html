@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ปัญหาสินค้าค้างไลน์ผลิต — BSS SOLUTION</title>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Doodle-style explainer. Like scene.html it is fully deterministic: every
+   value is a function of the frame number, set by render(f). Timing comes
+   from timeline.js, which build-audio.js writes from the measured voice. */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0a192f; font-family: 'Mali', 'Leelawadee UI', sans-serif; }
+#svg { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+.ink   { stroke: #071224; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+.thin  { stroke: #071224; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.txt   { font-family: 'Mali', sans-serif; font-weight: 700; }
+#subs {
+    position: absolute; left: 0; right: 0; bottom: 46px; text-align: center;
+    font-family: 'Mali', sans-serif; font-weight: 700; font-size: 46px; line-height: 1.3; color: #fff;
+    -webkit-text-stroke: 10px #071224; paint-order: stroke fill;
+}
+#subs span { display: inline-block; padding: 4px 26px 8px; }
+</style>
+<script src="timeline.js"></script>
+</head>
+<body>
+<svg id="svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <defs>
+        <!-- Line boil + sticker halo. The turbulence seed changes every few
+             frames, so every outline wobbles like it was redrawn by hand; the
+             dilated white rim keeps dark ink readable on the navy page. -->
+        <filter id="doodle" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence id="boilNoise" type="fractalNoise" baseFrequency="0.022" numOctaves="2" seed="1" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" result="wob"/>
+            <feMorphology in="wob" operator="dilate" radius="5" result="fat"/>
+            <feFlood flood-color="#ffffff" result="white"/>
+            <feComposite in="white" in2="fat" operator="in" result="halo"/>
+            <feMerge><feMergeNode in="halo"/><feMergeNode in="wob"/></feMerge>
+        </filter>
+        <clipPath id="photoClip"><rect x="-150" y="-110" width="300" height="220"/></clipPath>
+    </defs>
+    <g id="bg"></g>
+    <g id="cam"><g id="world" filter="url(#doodle)"></g></g>
+    <g id="fxTop"></g>
+    <g id="wipe"></g>
+</svg>
+<div id="subs"><span id="subText"></span></div>
+
+<script>
+(function () {
+'use strict';
+const TL = window.TL;
+const { FPS, TOTAL, BOX_EVERY, BOX_DELAY, BOX_MAX } = TL;
+
+/* ------------------------------------------------------------- helpers */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const inv = (f, a, b) => clamp((f - a) / (b - a), 0, 1);
+const lerp = (a, b, t) => a + (b - a) * t;
+const outBack = t => { const c = 2.2; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+const inOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const outElastic = t => t === 0 || t === 1 ? t : Math.pow(2, -10 * t) * Math.sin((t * 10 - .75) * (2 * Math.PI / 3)) + 1;
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const pop = (l, a, d = 14) => outBack(inv(l, a, a + d));     // 0 → 1 with overshoot
+const $ = id => document.getElementById(id);
+const els = {};
+const E = id => els[id] || (els[id] = document.getElementById(id));
+function tf(id, x, y, s = 1, r = 0, sx = 1, sy = 1) {
+    const e = E(id); if (!e) return;
+    e.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${r.toFixed(2)}) scale(${(s * sx).toFixed(3)},${(s * sy).toFixed(3)})`);
+}
+function op(id, v) { const e = E(id); if (e) e.setAttribute('opacity', clamp(v, 0, 1).toFixed(3)); }
+function at(id, k, v) { const e = E(id); if (e) e.setAttribute(k, v); }
+
+const ORANGE = '#ff8c00', ORANGE2 = '#ffb347', NAVY = '#0a192f', NAVY2 = '#1d3a5f', INK = '#071224', CARD = '#ffd9a6';
+
+const lineAt = f => { for (let i = TL.lines.length - 1; i >= 0; i--) if (f >= TL.lines[i].from) return i; return -1; };
+const sceneById = id => TL.scenes.find(s => s.id === id);
+const linesOf = id => TL.lines.filter(l => l.scene === id);
+const mouthAt = f => TL.mouth[clamp(f, 0, TOTAL - 1)] || 0;
+const talking = f => { const i = lineAt(f); return i >= 0 && f <= TL.lines[i].to; };
+
+/* ---------------------------------------------------------- characters */
+
+// Narrator mascot "น้องบีเอส": white body, orange hard hat, BSS badge.
+function mascotSVG(p) {
+    return `
+<g id="${p}">
+  <g id="${p}-legL"><path class="ink" d="M-45,-48 L-52,-4" fill="none"/><ellipse class="ink" cx="-60" cy="0" rx="30" ry="14" fill="${NAVY2}"/></g>
+  <g id="${p}-legR"><path class="ink" d="M45,-48 L52,-4" fill="none"/><ellipse class="ink" cx="60" cy="0" rx="30" ry="14" fill="${NAVY2}"/></g>
+  <g id="${p}-body">
+    <g id="${p}-armL"><path class="ink" d="M-104,-150 Q-160,-120 -175,-75" fill="none"/><circle class="ink" cx="-178" cy="-70" r="20" fill="#fff"/></g>
+    <g id="${p}-armR"><path class="ink" d="M104,-150 Q160,-120 175,-75" fill="none"/><circle class="ink" cx="178" cy="-70" r="20" fill="#fff"/></g>
+    <rect class="ink" x="-110" y="-262" width="220" height="220" rx="58" fill="#fff"/>
+    <path class="thin" d="M-72,-70 L-72,-52 M72,-70 L72,-52" fill="none"/>
+    <rect class="thin" x="-46" y="-100" width="92" height="38" rx="10" fill="${ORANGE}"/>
+    <text class="txt" x="0" y="-72" font-size="26" text-anchor="middle" fill="#fff">BSS</text>
+    <g id="${p}-head">
+      <path class="ink" d="M-104,-232 Q-104,-322 0,-326 Q104,-322 104,-232 Z" fill="${ORANGE}"/>
+      <path class="ink" d="M-126,-230 L126,-230" fill="none"/>
+      <path class="thin" d="M0,-322 L0,-270" fill="none"/>
+      <ellipse class="ink" cx="-40" cy="-178" rx="25" ry="31" fill="#fff"/>
+      <ellipse class="ink" cx="40" cy="-178" rx="25" ry="31" fill="#fff"/>
+      <circle id="${p}-pl" cx="-36" cy="-174" r="11" fill="${INK}"/>
+      <circle id="${p}-pr" cx="44" cy="-174" r="11" fill="${INK}"/>
+      <rect id="${p}-lidL" x="-68" y="-212" width="56" height="0" fill="#fff" class="thin"/>
+      <rect id="${p}-lidR" x="12" y="-212" width="56" height="0" fill="#fff" class="thin"/>
+      <path id="${p}-brL" class="ink" d="M-62,-220 L-20,-214" fill="none"/>
+      <path id="${p}-brR" class="ink" d="M20,-214 L62,-220" fill="none"/>
+      <ellipse class="thin" cx="-74" cy="-136" rx="14" ry="8" fill="${ORANGE2}" opacity=".7"/>
+      <ellipse class="thin" cx="74" cy="-136" rx="14" ry="8" fill="${ORANGE2}" opacity=".7"/>
+      <ellipse id="${p}-mouth" class="ink" cx="0" cy="-128" rx="26" ry="6" fill="#5a1520"/>
+    </g>
+  </g>
+</g>`;
+}
+
+/* pose: talk 0..1, wave (arm swing), armL/armR in degrees, tilt, bounce px, sq (squash), blink */
+function poseMascot(p, f, o) {
+    const { x, y, s = 1, talk = 0, armL = 10, armR = -10, tilt = 0, bounce = 0, sq = 1, look = 0, brow = 0, walk = 0 } = o;
+    tf(p, x, y - bounce, s, 0, 1 / Math.sqrt(sq), sq);
+    at(p + '-body', 'transform', `rotate(${tilt} 0 -40)`);
+    at(p + '-armL', 'transform', `rotate(${armL} -104 -150)`);
+    at(p + '-armR', 'transform', `rotate(${armR} 104 -150)`);
+    at(p + '-legL', 'transform', `rotate(${walk ? Math.sin(f * .5) * 22 : 0} -45 -48)`);
+    at(p + '-legR', 'transform', `rotate(${walk ? -Math.sin(f * .5) * 22 : 0} 45 -48)`);
+    at(p + '-mouth', 'ry', (5 + talk * 26).toFixed(1));
+    at(p + '-mouth', 'rx', (24 + talk * 6).toFixed(1));
+    // blink every ~3.3s, offset per character so they never blink in unison
+    const ph = (f + p.length * 37) % 100, b = ph < 3 ? 1 - Math.abs(ph - 1.5) / 1.5 : 0;
+    at(p + '-lidL', 'height', (b * 62).toFixed(1)); at(p + '-lidR', 'height', (b * 62).toFixed(1));
+    at(p + '-pl', 'cx', -36 + look * 9); at(p + '-pr', 'cx', 44 + look * 9);
+    at(p + '-brL', 'transform', `translate(0 ${-brow * 10}) rotate(${brow * -8} -40 -217)`);
+    at(p + '-brR', 'transform', `translate(0 ${-brow * 10}) rotate(${brow * 8} 40 -217)`);
+}
+
+// Factory worker: hard hat, vest.
+function workerSVG(p) {
+    return `
+<g id="${p}">
+  <g id="${p}-legL"><path class="ink" d="M-26,-60 L-30,-6" fill="none"/><ellipse class="ink" cx="-36" cy="-2" rx="22" ry="11" fill="${INK}"/></g>
+  <g id="${p}-legR"><path class="ink" d="M26,-60 L30,-6" fill="none"/><ellipse class="ink" cx="36" cy="-2" rx="22" ry="11" fill="${INK}"/></g>
+  <g id="${p}-body">
+    <g id="${p}-armL"><path class="ink" d="M-58,-150 L-92,-90" fill="none"/><circle class="ink" cx="-95" cy="-84" r="15" fill="#fff"/></g>
+    <g id="${p}-armR"><path class="ink" d="M58,-150 L92,-90" fill="none"/><circle class="ink" cx="95" cy="-84" r="15" fill="#fff"/></g>
+    <rect class="ink" x="-60" y="-178" width="120" height="124" rx="30" fill="${NAVY2}"/>
+    <path class="thin" d="M-38,-176 L-38,-56 M38,-176 L38,-56" stroke="${ORANGE}" stroke-width="12"/>
+    <path class="thin" d="M-60,-112 L60,-112" stroke="#fff" stroke-width="8"/>
+    <g id="${p}-head">
+      <circle class="ink" cx="0" cy="-232" r="56" fill="#fff"/>
+      <path class="ink" d="M-58,-246 Q-56,-306 0,-308 Q56,-306 58,-246 Z" fill="${ORANGE}"/>
+      <path class="ink" d="M-74,-246 L74,-246" fill="none"/>
+      <circle cx="-20" cy="-226" r="7" fill="${INK}"/><circle cx="20" cy="-226" r="7" fill="${INK}"/>
+      <path id="${p}-mouth" class="thin" d="M-16,-202 Q0,-188 16,-202" fill="none"/>
+      <g id="${p}-sweat" opacity="0"><path class="thin" d="M50,-262 Q62,-240 50,-232 Q38,-240 50,-262 Z" fill="#7fd3ff"/><path class="thin" d="M66,-226 Q74,-212 66,-206 Q58,-212 66,-226 Z" fill="#7fd3ff"/></g>
+    </g>
+  </g>
+</g>`;
+}
+function poseWorker(p, f, o) {
+    const { x, y, s = 1, armL = 15, armR = -15, tilt = 0, bounce = 0, mood = 'ok', sweat = 0, walk = 0, sq = 1 } = o;
+    tf(p, x, y - bounce, s, 0, 1 / Math.sqrt(sq), sq);
+    at(p + '-body', 'transform', `rotate(${tilt} 0 -60)`);
+    at(p + '-armL', 'transform', `rotate(${armL} -58 -150)`);
+    at(p + '-armR', 'transform', `rotate(${armR} 58 -150)`);
+    at(p + '-legL', 'transform', `rotate(${walk ? Math.sin(f * .55) * 25 : 0} -26 -60)`);
+    at(p + '-legR', 'transform', `rotate(${walk ? -Math.sin(f * .55) * 25 : 0} 26 -60)`);
+    const m = { ok: 'M-16,-202 Q0,-188 16,-202', happy: 'M-22,-206 Q0,-180 22,-206 Z', tired: 'M-16,-196 Q-8,-204 0,-196 Q8,-188 16,-196', wow: 'M-10,-200 a10 10 0 1 0 20 0 a10 10 0 1 0 -20 0' }[mood];
+    at(p + '-mouth', 'd', m);
+    at(p + '-mouth', 'fill', mood === 'happy' ? '#5a1520' : 'none');
+    op(p + '-sweat', sweat);
+}
+
+// Production machine with gauge eyes and a smokestack.
+function machineSVG(p) {
+    return `
+<g id="${p}">
+  <g id="${p}-body">
+    <rect class="ink" x="128" y="-470" width="56" height="150" fill="#fff"/>
+    <path class="thin" d="M128,-430 L184,-430" fill="none"/>
+    <g id="${p}-smoke">${[0, 1, 2].map(i => `<circle id="${p}-sm${i}" class="thin" cx="156" cy="-500" r="26" fill="#fff"/>`).join('')}</g>
+    <rect class="ink" x="-190" y="-340" width="380" height="340" rx="26" fill="#fff"/>
+    <rect class="ink" x="-160" y="-310" width="320" height="160" rx="18" fill="${NAVY2}"/>
+    <circle class="ink" cx="-72" cy="-232" r="52" fill="#fff"/><circle class="ink" cx="72" cy="-232" r="52" fill="#fff"/>
+    <path id="${p}-ndL" class="ink" d="M-72,-232 L-72,-270" fill="none" stroke="${ORANGE}"/>
+    <path id="${p}-ndR" class="ink" d="M72,-232 L72,-270" fill="none" stroke="${ORANGE}"/>
+    <circle cx="-72" cy="-232" r="8" fill="${INK}"/><circle cx="72" cy="-232" r="8" fill="${INK}"/>
+    <rect id="${p}-mouth" class="ink" x="-70" y="-120" width="140" height="34" rx="12" fill="#5a1520"/>
+    <path class="thin" d="M-46,-120 L-46,-86 M-16,-120 L-16,-86 M16,-120 L16,-86 M46,-120 L46,-86" fill="none"/>
+    ${[-160, 160].map(x => `<circle class="thin" cx="${x}" cy="-30" r="8" fill="${ORANGE}"/>`).join('')}
+    <circle id="${p}-bulb" class="ink" cx="-120" cy="-366" r="22" fill="${ORANGE2}"/>
+    <path class="ink" d="M-120,-344 L-120,-340" fill="none"/>
+    <path class="ink" d="M190,-150 L280,-110 L280,-60 L190,-80 Z" fill="${CARD}"/>
+  </g>
+  <g id="${p}-zzz" opacity="0"><text class="txt" x="-40" y="-400" font-size="64" fill="#fff" stroke="${INK}" stroke-width="5" paint-order="stroke">Zzz</text></g>
+</g>`;
+}
+function poseMachine(p, f, o) {
+    const { x, y, s = 1, work = 1, stopped = 0, sq = 1 } = o;
+    const shake = work * Math.sin(f * 2.1) * 3;
+    tf(p, x + shake, y, s, 0, 1 / Math.sqrt(sq), sq);
+    at(p + '-ndL', 'transform', `rotate(${work ? Math.sin(f * .3) * 60 : -50} -72 -232)`);
+    at(p + '-ndR', 'transform', `rotate(${work ? Math.cos(f * .27) * 60 : 50} 72 -232)`);
+    for (let i = 0; i < 3; i++) {
+        const t = ((f * (work ? 1 : 0.25) + i * 20) % 60) / 60;
+        at(p + '-sm' + i, 'cy', (-500 - t * 160).toFixed(1));
+        at(p + '-sm' + i, 'r', (16 + t * 34).toFixed(1));
+        op(p + '-sm' + i, (1 - t) * (work ? 1 : 0.3));
+    }
+    at(p + '-mouth', 'height', (work ? 34 + Math.abs(Math.sin(f * .4)) * 12 : 10).toFixed(1));
+    at(p + '-bulb', 'fill', stopped ? (Math.floor(f / 6) % 2 ? '#ff3b30' : '#ffd0cc') : ORANGE2);
+    op(p + '-zzz', stopped);
+    if (stopped) at(p + '-zzz', 'transform', `translate(0 ${-((f % 40) / 40) * 30})`);
+}
+
+// Cardboard box with a face. mood: happy | worried | panic
+function boxSVG(p) {
+    return `
+<g id="${p}">
+  <rect class="ink" x="-46" y="-92" width="92" height="92" rx="8" fill="${CARD}"/>
+  <path class="thin" d="M-46,-66 L46,-66 M0,-92 L0,-66" fill="none"/>
+  <rect x="-8" y="-92" width="16" height="26" fill="${ORANGE}" opacity=".85"/>
+  <circle id="${p}-el" cx="-16" cy="-40" r="6" fill="${INK}"/><circle id="${p}-er" cx="16" cy="-40" r="6" fill="${INK}"/>
+  <path id="${p}-m" class="thin" d="M-12,-24 Q0,-14 12,-24" fill="none"/>
+</g>`;
+}
+function poseBox(p, x, y, s, r, mood, f) {
+    tf(p, x, y, s, r);
+    const m = { happy: 'M-13,-26 Q0,-12 13,-26', worried: 'M-12,-18 Q0,-28 12,-18', panic: 'M-9,-24 a9 7 0 1 0 18 0 a9 7 0 1 0 -18 0' }[mood];
+    at(p + '-m', 'd', m);
+    const er = mood === 'panic' ? 8 : 6;
+    at(p + '-el', 'r', er); at(p + '-er', 'r', er);
+}
+
+// Conveyor with spinning rollers. len in px; rollers every 110px.
+function conveyorSVG(p, len) {
+    const n = Math.floor(len / 110) + 1;
+    let r = '';
+    for (let i = 0; i < n; i++) {
+        const cx = 40 + i * ((len - 80) / (n - 1));
+        r += `<g id="${p}-r${i}" transform="translate(${cx.toFixed(1)},-110)"><circle class="ink" r="28" fill="#fff"/><path class="thin" d="M-20,0 L20,0 M0,-20 L0,20" fill="none"/></g>`;
+    }
+    return `
+<g id="${p}">
+  <path class="ink" d="M30,-80 L20,0 M${len - 30},-80 L${len - 20},0 M${len / 2},-80 L${len / 2},0" fill="none"/>
+  <rect class="ink" x="0" y="-150" width="${len}" height="80" rx="40" fill="${NAVY2}"/>
+  ${r}
+  <path id="${p}-belt" class="ink" d="M10,-146 L${len - 10},-146" fill="none" stroke-dasharray="26 22" stroke="${ORANGE}"/>
+</g>`;
+}
+function poseConveyor(p, f, x, y, s, speed, len) {
+    tf(p, x, y, s);
+    const n = Math.floor(len / 110) + 1;
+    for (let i = 0; i < n; i++) at(`${p}-r${i}`, 'transform', `translate(${(40 + i * ((len - 80) / (n - 1))).toFixed(1)},-110) rotate(${(f * speed * 6) % 360})`);
+    at(p + '-belt', 'stroke-dashoffset', (-f * speed * 3).toFixed(1));
+}
+
+// Polaroid with a real company photo, taped to the page.
+function photoSVG(p, img, caption) {
+    return `
+<g id="${p}">
+  <rect class="ink" x="-170" y="-130" width="340" height="300" rx="6" fill="#fff"/>
+  <image href="../../images/works/${img}" x="-150" y="-110" width="300" height="220" preserveAspectRatio="xMidYMid slice" clip-path="url(#photoClip)"/>
+  <rect class="thin" x="-150" y="-110" width="300" height="220" fill="none"/>
+  <text class="txt" x="0" y="148" font-size="28" text-anchor="middle" fill="${INK}">${caption}</text>
+  <rect x="-60" y="-148" width="120" height="36" fill="${ORANGE}" opacity=".85" transform="rotate(-4)"/>
+</g>`;
+}
+
+const clockSVG = p => `
+<g id="${p}"><circle class="ink" r="56" fill="#fff"/><path class="thin" d="M0,-44 L0,-36 M44,0 L36,0 M0,44 L0,36 M-44,0 L-36,0" fill="none"/>
+<path id="${p}-h" class="ink" d="M0,0 L0,-38" fill="none" stroke="${ORANGE}"/><circle r="7" fill="${INK}"/>
+<path class="ink" d="M-40,-50 L-52,-64 M40,-50 L52,-64" fill="none"/></g>`;
+
+const checkSVG = (p, good = true) => `
+<g id="${p}"><circle class="ink" r="62" fill="${good ? '#2ecc71' : '#ff3b30'}"/>
+<path class="ink" d="${good ? 'M-28,2 L-6,24 L30,-22' : 'M-24,-24 L24,24 M24,-24 L-24,24'}" fill="none" stroke="#fff" stroke-width="14"/></g>`;
+
+const bubbleSVG = (p, text, w = 300, fs = 44) => `
+<g id="${p}"><rect class="ink" x="${-w / 2}" y="-60" width="${w}" height="96" rx="40" fill="#fff"/>
+<path class="ink" d="M-20,34 L-34,72 L10,36" fill="#fff"/>
+<rect x="${-w / 2 + 6}" y="26" width="${w - 12}" height="12" fill="#fff"/>
+<text class="txt" x="0" y="4" font-size="${fs}" text-anchor="middle" fill="${INK}">${text}</text></g>`;
+
+const tagSVG = (p, text, fill = ORANGE, color = '#fff', fs = 44) => `
+<g id="${p}"><text class="txt" x="0" y="0" font-size="${fs}" text-anchor="middle" fill="${color}" stroke="${INK}" stroke-width="10" paint-order="stroke">${text}</text></g>`;
+
+function burstSVG(p, n = 14, r1 = 70, r2 = 130) {
+    let d = '';
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; d += `M${(Math.cos(a) * r1).toFixed(1)},${(Math.sin(a) * r1).toFixed(1)} L${(Math.cos(a) * r2).toFixed(1)},${(Math.sin(a) * r2).toFixed(1)} `; }
+    return `<g id="${p}"><path class="ink" d="${d}" fill="none" stroke="${ORANGE}"/></g>`;
+}
+
+function gearSVG(p, r, teeth, label, fill) {
+    let d = '';
+    for (let i = 0; i < teeth * 2; i++) {
+        const a0 = i / (teeth * 2) * Math.PI * 2, a1 = (i + 1) / (teeth * 2) * Math.PI * 2;
+        const rr = i % 2 ? r : r + 26;
+        d += (i ? 'L' : 'M') + (Math.cos(a0) * rr).toFixed(1) + ',' + (Math.sin(a0) * rr).toFixed(1) + ' L' + (Math.cos(a1) * rr).toFixed(1) + ',' + (Math.sin(a1) * rr).toFixed(1) + ' ';
+    }
+    return `<g id="${p}"><g id="${p}-rot"><path class="ink" d="${d}Z" fill="${fill}"/><circle class="ink" r="${r * .42}" fill="#fff"/></g>
+<text class="txt" y="16" font-size="${Math.round(r * .3)}" text-anchor="middle" fill="${INK}">${label}</text></g>`;
+}
+
+// station card used for line maps
+const stationSVG = (p, label, w = 200) => `
+<g id="${p}"><rect class="ink" x="${-w / 2}" y="-70" width="${w}" height="120" rx="22" fill="#fff"/>
+<text class="txt" y="8" font-size="34" text-anchor="middle" fill="${INK}">${label}</text></g>`;
+
+function cardSVG(p, title, icon) {
+    return `
+<g id="${p}">
+  <rect id="${p}-bd" class="ink" x="-165" y="-200" width="330" height="400" rx="30" fill="#fff"/>
+  <g transform="translate(0,-40)">${icon}</g>
+  <text class="txt" y="150" font-size="34" text-anchor="middle" fill="${INK}">${title}</text>
+</g>`;
+}
+
+/* ------------------------------------------------------------ the page */
+function buildBackground() {
+    // A scattered doodle wallpaper in a slightly lighter navy, like the
+    // margins of a sketchbook: stars, spirals, bolts, dots and little gears.
+    let s = `<rect width="1920" height="1080" fill="${NAVY}"/><g id="bgPat" stroke="#1a3558" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round">`;
+    for (let i = 0; i < 70; i++) {
+        const x = hash(i) * 2200 - 140, y = hash(i + 99) * 1360 - 140, k = Math.floor(hash(i + 7) * 5), r = 14 + hash(i + 3) * 18;
+        const t = `translate(${x.toFixed(0)},${y.toFixed(0)}) rotate(${(hash(i + 5) * 360).toFixed(0)})`;
+        if (k === 0) s += `<path transform="${t}" d="M0,-${r} L${r * .3},-${r * .3} L${r},0 L${r * .3},${r * .3} L0,${r} L-${r * .3},${r * .3} L-${r},0 L-${r * .3},-${r * .3} Z"/>`;
+        else if (k === 1) s += `<path transform="${t}" d="M0,0 a6 6 0 0 1 12 0 a12 12 0 0 1 -24 0 a18 18 0 0 1 36 0"/>`;
+        else if (k === 2) s += `<path transform="${t}" d="M-8,-${r} L6,-4 L-6,4 L8,${r}"/>`;
+        else if (k === 3) s += `<circle transform="${t}" r="${(r * .35).toFixed(0)}"/>`;
+        else s += `<path transform="${t}" d="M-${r},0 L${r},0 M0,-${r} L0,${r} M-${r * .7},-${r * .7} L${r * .7},${r * .7} M${r * .7},-${r * .7} L-${r * .7},${r * .7}"/>`;
+    }
+    $('bg').innerHTML = s + '</g>';
+}
+
+const SCENES = {};      // id -> { svg, render(l, f, len) }
+const W = s => `<g id="${s}" display="none">`;
+
+/* ---- s0: title card ---------------------------------------------------- */
+SCENES.s0 = {
+    svg: W('s0') + burstSVG('s0-burst', 22, 180, 320) +
+        `<g id="s0-t1">${tagSVG('s0-t1i', 'ปัญหา', ORANGE, ORANGE, 150)}</g>` +
+        `<g id="s0-t2">${tagSVG('s0-t2i', 'สินค้าค้างไลน์ผลิต', '#fff', '#fff', 120)}</g>` +
+        [0, 1, 2, 3, 4, 5].map(i => boxSVG('s0-b' + i)).join('') + mascotSVG('s0-m') + '</g>',
+    render(l, f) {
+        tf('s0-burst', 960, 420, pop(l, 0, 12) * (1 + Math.sin(l * .2) * .04), l * .6);
+        const a = pop(l, 4, 12), b = pop(l, 12, 12);
+        tf('s0-t1', 960, 330, a, Math.sin(l * .15) * 2, 1, 1); op('s0-t1', inv(l, 4, 8));
+        tf('s0-t2', 960, 500, b, Math.sin(l * .13 + 1) * 1.5); op('s0-t2', inv(l, 12, 16));
+        for (let i = 0; i < 6; i++) {
+            const t = ((l * 1.1 + i * 23) % 110) / 110;
+            poseBox('s0-b' + i, 160 + i * 320 + Math.sin(i) * 40, -120 + t * 1300, .9, t * 300 + i * 40, i % 2 ? 'panic' : 'worried', f);
+        }
+        const j = pop(l, 22, 16);
+        poseMascot('s0-m', f, { x: 960, y: lerp(1300, 1010, j), s: .85, armL: -60 + Math.sin(l * .5) * 30, armR: 60 - Math.sin(l * .5) * 30, bounce: Math.abs(Math.sin(l * .25)) * 30, brow: 1, talk: .6 });
+    }
+};
+
+/* ---- s1: modern factory, still behind target --------------------------- */
+SCENES.s1 = {
+    svg: W('s1') +
+        `<path class="ink" d="M-20,180 L160,90 L340,180 L520,90 L700,180 L880,90 L1060,180 L1240,90 L1420,180 L1600,90 L1780,180 L1960,90" fill="none" stroke="#fff"/>` +
+        `<path class="ink" d="M-20,860 L1960,860" fill="none" stroke="#fff"/>` +
+        photoSVG('s1-ph', 'conveyor-belt-factory.jpg', 'โรงงานจริง') +
+        machineSVG('s1-mc') + workerSVG('s1-w1') + workerSVG('s1-w2') +
+        `<g id="s1-tg"><path class="ink" d="M0,0 L0,220" fill="none"/><rect class="ink" x="-230" y="-120" width="460" height="150" rx="20" fill="#fff"/>
+         <text class="txt" x="0" y="-62" font-size="40" text-anchor="middle" fill="${INK}">เป้าหมาย</text>
+         <rect class="thin" x="-190" y="-30" width="380" height="36" rx="18" fill="${NAVY2}"/>
+         <rect id="s1-bar" class="thin" x="-190" y="-30" width="0" height="36" rx="18" fill="${ORANGE}"/>
+         <path class="ink" d="M190,-44 L190,20" fill="none" stroke="#2ecc71"/></g>` +
+        `<g id="s1-stamp">${tagSVG('s1-stampi', 'ไม่ทัน!', '#ff3b30', '#ff5a4f', 92)}</g>` +
+        [0, 1, 2].map(i => `<g id="s1-q${i}">${tagSVG('s1-qi' + i, '?', '#fff', '#fff', 110)}</g>`).join('') +
+        mascotSVG('s1-m') + '</g>',
+    render(l, f) {
+        const L = linesOf('s1'), base = sceneById('s1').from;
+        const l3 = L[L.length - 1].from - base;   // the "behind target" line
+        const ph = pop(l, 18, 18);
+        tf('s1-ph', 240, 250, ph * .62, -7 + Math.sin(l * .05) * 1.5);
+        poseMachine('s1-mc', f, { x: 1520, y: 860, s: .9 });
+        const hm = Math.sin(l * .45);
+        poseWorker('s1-w1', f, { x: 980, y: 860, s: .9, armR: -100 + hm * 40, armL: 20, bounce: Math.abs(hm) * 6, mood: 'ok', tilt: hm * 3 });
+        poseWorker('s1-w2', f, { x: 1170, y: 860, s: .9, armL: 100 - Math.cos(l * .45) * 40, armR: -20, bounce: Math.abs(Math.cos(l * .45)) * 6, mood: 'ok' });
+        tf('s1-tg', 760, 330, pop(l, 6, 14) * .9);
+        const fill = 380 * clamp(inv(l, 20, l3) * .66, 0, .66) + (l > l3 ? Math.sin(l * 1.2) * 6 * inv(l, l3, l3 + 6) : 0);
+        at('s1-bar', 'width', Math.max(0, fill).toFixed(1));
+        const st = pop(l, l3 + 26, 10);
+        tf('s1-stamp', 990, 430, st * 1.1, -14); op('s1-stamp', inv(l, l3 + 26, l3 + 30));
+        for (let i = 0; i < 3; i++) {
+            const q = pop(l, l3 + 8 + i * 6, 12);
+            tf('s1-q' + i, 500 + i * 110, 560 - i * 50 + Math.sin(l * .2 + i) * 12, q * (.8 + i * .2), (i - 1) * 15);
+            op('s1-q' + i, inv(l, l3 + 8 + i * 6, l3 + 12 + i * 6));
+        }
+        const tk = mouthAt(f);
+        const confused = l > l3;
+        poseMascot('s1-m', f, { x: lerp(-200, 330, outCubic(inv(l, 0, 20))), y: 900, s: .95, talk: tk, walk: l < 20,
+            armL: confused ? -150 + Math.sin(l * .3) * 10 : 20 + Math.sin(l * .2) * 15, armR: confused ? -20 : -40 - tk * 50,
+            tilt: confused ? -8 : Math.sin(l * .1) * 3, bounce: tk * 8, brow: confused ? -.8 : .4, look: .8 });
+    }
+};
+
+/* ---- s2: not the machine, not the people ------------------------------- */
+SCENES.s2 = {
+    svg: W('s2') + `<path class="ink" d="M-20,860 L1960,860" fill="none" stroke="#fff"/>` +
+        `<g id="s2-spot"><path d="M1240,-40 L1000,860 L1560,860 Z" fill="#fff" opacity=".12"/></g>` +
+        machineSVG('s2-mc') + workerSVG('s2-w') + checkSVG('s2-c1') + checkSVG('s2-c2') +
+        conveyorSVG('s2-cv', 700) + `<g id="s2-ex">${tagSVG('s2-exi', '!', ORANGE, ORANGE, 220)}</g>` +
+        `<g id="s2-lbl">${tagSVG('s2-lbli', 'ระบบลำเลียง?', '#fff', '#fff', 64)}</g>` +
+        mascotSVG('s2-m') + '</g>',
+    render(l, f) {
+        const L = linesOf('s2'), base = sceneById('s2').from, l2 = L[1].from - base;
+        const out = outCubic(inv(l, l2, l2 + 20));
+        poseMachine('s2-mc', f, { x: lerp(420, 300, out), y: 860, s: lerp(.62, .45, out) });
+        poseWorker('s2-w', f, { x: lerp(1540, 1700, out), y: 860, s: lerp(1, .7, out), armR: -150, armL: 20, bounce: Math.abs(Math.sin(l * .3)) * 8, mood: 'happy' });
+        tf('s2-c1', lerp(420, 300, out), lerp(370, 560, out), pop(l, 30, 14) * lerp(1, .6, out));
+        tf('s2-c2', lerp(1540, 1700, out), lerp(470, 600, out), pop(l, 46, 14) * lerp(1, .6, out));
+        const cv = pop(l, l2 + 10, 18);
+        poseConveyor('s2-cv', f, 900, lerp(1200, 860, cv), 1, Math.floor(l / 9) % 3 === 0 ? 0 : .6, 700);
+        op('s2-spot', inv(l, l2 + 18, l2 + 30) * (.7 + Math.sin(l * .5) * .3));
+        tf('s2-ex', 1250, 520 + Math.sin(l * .4) * 14, pop(l, l2 + 26, 12), Math.sin(l * .6) * 8); op('s2-ex', inv(l, l2 + 26, l2 + 30));
+        tf('s2-lbl', 1250, 640, pop(l, l2 + 34, 12)); op('s2-lbl', inv(l, l2 + 34, l2 + 38));
+        const tk = mouthAt(f), shake = l < l2 ? Math.sin(l * .55) * 9 : 0;
+        poseMascot('s2-m', f, { x: lerp(960, 640, out), y: 960, s: lerp(1.15, .95, out), talk: tk, tilt: shake,
+            armL: l < l2 ? 40 : 30, armR: l < l2 ? -40 : -120 + Math.sin(l * .3) * 10, bounce: tk * 8, brow: l < l2 ? .3 : 1, look: l < l2 ? Math.sin(l * .55) : 1 });
+    }
+};
+
+/* ---- s3: boxes pile up ------------------------------------------------- */
+// Pile slots: a stepped heap at the head of the conveyor, bottom row first.
+const PILE = [];
+{
+    const rows = [7, 6, 6, 5, 3, 2, 1];
+    rows.forEach((n, r) => { for (let i = 0; i < n; i++) PILE.push([560 + r * 44 + i * 88 + (hash(r * 9 + i) - .5) * 14, 860 - r * 86, (hash(r * 5 + i) - .5) * 14]); });
+}
+SCENES.s3 = {
+    svg: W('s3') + `<path class="ink" d="M-20,860 L1960,860" fill="none" stroke="#fff"/>` +
+        machineSVG('s3-mc') + conveyorSVG('s3-cv', 820) +
+        `<g id="s3-snail"><path class="ink" d="M-60,0 Q-70,-50 -20,-56 Q30,-58 30,-10 Q30,10 0,10 L-80,10 Q-90,10 -90,0 Z" fill="${ORANGE2}"/>
+         <path class="thin" d="M-20,-30 a14 14 0 1 1 1 0" fill="none"/><path class="thin" d="M30,-8 L48,-40 M38,-6 L60,-30" fill="none"/></g>` +
+        `<g id="s3-slow">${tagSVG('s3-slowi', 'ช้า...', '#fff', '#fff', 58)}</g>` +
+        Array.from({ length: BOX_MAX }, (_, i) => boxSVG('s3-b' + i)).join('') + boxSVG('s3-ride') +
+        mascotSVG('s3-m') + '</g>'
+};
+function pileBox(id, k, f, s3from, settle) {
+    const spawn = s3from + BOX_DELAY + k * BOX_EVERY;
+    const slot = PILE[k];
+    const t = inv(f, spawn - 12, spawn);
+    if (f < spawn - 12) { tf(id, 0, 0, 0); return; }
+    const sx = 470, sy = 680;
+    const x = lerp(sx, slot[0], t), y = lerp(sy, slot[1], t) - Math.sin(t * Math.PI) * 180;
+    const land = f >= spawn ? 1 - inv(f, spawn, spawn + 8) : 0;
+    const mood = k < 6 ? 'happy' : k < 16 ? 'worried' : 'panic';
+    poseBox(id, x, y, .95 * (1 + land * .15), lerp(-120, slot[2], t) + (settle ? Math.sin(f * .3 + k) * 2 : 0), mood, f);
+    at(id, 'transform', E(id).getAttribute('transform') + ` scale(1,${(1 - land * .3).toFixed(3)})`);
+}
+SCENES.s3.render = function (l, f) {
+    const sc = sceneById('s3'), L = linesOf('s3'), l2 = L[1].from - sc.from, l3 = L[2].from - sc.from;
+    poseMachine('s3-mc', f, { x: 300, y: 860, s: .8, sq: 1 + Math.max(0, Math.sin((l - BOX_DELAY) / BOX_EVERY * Math.PI * 2)) * .05 });
+    poseConveyor('s3-cv', f, 1020, 860, 1, .18, 820);
+    for (let k = 0; k < BOX_MAX; k++) pileBox('s3-b' + k, k, f, sc.from, false);
+    poseBox('s3-ride', 1080 + ((l * 1.2) % 700), 710, .95, 0, 'worried', f);
+    const sn = pop(l, l2 + 4, 14);
+    tf('s3-snail', 1400 + l * .4, 704, sn); op('s3-snail', inv(l, l2 + 4, l2 + 8));
+    tf('s3-slow', 1420, 560 + Math.sin(l * .2) * 8, pop(l, l2 + 14, 12)); op('s3-slow', inv(l, l2 + 14, l2 + 18));
+    const tk = mouthAt(f), facepalm = l > l3 + 20;
+    poseMascot('s3-m', f, { x: 1700, y: 900, s: .7, talk: tk, armR: facepalm ? -150 : -40 - tk * 40, armL: facepalm ? 30 : 20,
+        tilt: facepalm ? 10 : 0, bounce: tk * 6, brow: facepalm ? -1 : .5, look: -1 });
+    // the pile is the subject: lean in on it as it grows
+    CAM.z = 1 + inv(l, l3, l3 + 120) * .12; CAM.x = -60 * inv(l, l3, l3 + 120); CAM.y = 40 * inv(l, l3, l3 + 120);
+};
+
+/* ---- s3b: people firefighting, machine stops --------------------------- */
+SCENES.s3b = {
+    svg: W('s3b') + `<path class="ink" d="M-20,860 L1960,860" fill="none" stroke="#fff"/>` +
+        machineSVG('s3b-mc') + conveyorSVG('s3b-cv', 820) +
+        Array.from({ length: BOX_MAX }, (_, i) => boxSVG('s3b-b' + i)).join('') +
+        workerSVG('s3b-w1') + boxSVG('s3b-c1') + workerSVG('s3b-w2') + boxSVG('s3b-c2') +
+        `<g id="s3b-stop"><path class="ink" d="M-70,-30 L-30,-70 L30,-70 L70,-30 L70,30 L30,70 L-30,70 L-70,30 Z" fill="#ff3b30"/>
+         <text class="txt" y="16" font-size="44" text-anchor="middle" fill="#fff">STOP</text><path class="ink" d="M0,70 L0,190" fill="none"/></g>` +
+        clockSVG('s3b-clk') + mascotSVG('s3b-m') + '</g>',
+    render(l, f) {
+        const sc = sceneById('s3b'), L = linesOf('s3b'), l2 = L[1].from - sc.from;
+        const stopped = l > l2 + 27;
+        poseMachine('s3b-mc', f, { x: 300, y: 860, s: .8, work: stopped ? 0 : 1, stopped: stopped ? 1 : 0 });
+        poseConveyor('s3b-cv', f, 1020, 860, 1, .18, 820);
+        const s3 = sceneById('s3');
+        for (let k = 0; k < BOX_MAX; k++) {
+            const slot = PILE[k];
+            const taken = (k === BOX_MAX - 1 && l > 60) || (k === BOX_MAX - 2 && l > 110);
+            if (taken) { tf('s3b-b' + k, 0, 0, 0); continue; }
+            poseBox('s3b-b' + k, slot[0], slot[1], .95, slot[2] + Math.sin(f * .3 + k) * 2, k < 6 ? 'happy' : k < 16 ? 'worried' : 'panic', f);
+        }
+        // two workers hustle in, grab a box each and shuffle it along
+        const w1x = lerp(1950, 1200, outCubic(inv(l, 0, 50))) - (l > 60 ? (l - 60) * 2.2 : 0) * 0 + Math.sin(l * .2) * 30 * inv(l, 60, 70);
+        const carry1 = l > 60;
+        poseWorker('s3b-w1', f, { x: w1x, y: 860, s: .85, walk: 1, armL: carry1 ? 160 : 30, armR: carry1 ? -160 : -30, bounce: Math.abs(Math.sin(l * .55)) * 10, mood: 'tired', sweat: 1 });
+        poseBox('s3b-c1', w1x, carry1 ? 860 - 300 * .85 + Math.abs(Math.sin(l * .55)) * -10 : -400, .8, Math.sin(l * .3) * 6, 'panic', f);
+        const w2x = lerp(2100, 1450, outCubic(inv(l, 20, 80))) + Math.sin(l * .2 + 2) * 30 * inv(l, 110, 120);
+        const carry2 = l > 110;
+        poseWorker('s3b-w2', f, { x: w2x, y: 860, s: .85, walk: 1, armL: carry2 ? 160 : 30, armR: carry2 ? -160 : -30, bounce: Math.abs(Math.cos(l * .55)) * 10, mood: 'tired', sweat: 1 });
+        poseBox('s3b-c2', w2x, carry2 ? 860 - 300 * .85 + Math.abs(Math.cos(l * .55)) * -10 : -400, .8, Math.cos(l * .3) * 6, 'panic', f);
+        const sp = pop(l, l2 + 27, 12);
+        tf('s3b-stop', 520, 340, sp, Math.sin(l * .5) * 4 * sp); op('s3b-stop', inv(l, l2 + 27, l2 + 31));
+        tf('s3b-clk', 300, 270, pop(l, l2 + 40, 12)); op('s3b-clk', inv(l, l2 + 40, l2 + 44));
+        at('s3b-clk-h', 'transform', `rotate(${l * 9})`);
+        const tk = mouthAt(f);
+        poseMascot('s3b-m', f, { x: 1760, y: 900, s: .62, talk: tk, armL: 30, armR: -60 - tk * 40, bounce: tk * 5, brow: stopped ? -1 : .3, look: -1 });
+    }
+};
+
+/* ---- s4: everyone waiting ---------------------------------------------- */
+SCENES.s4 = {
+    svg: W('s4') + `<path class="ink" d="M-20,860 L1960,860" fill="none" stroke="#fff"/>` +
+        [0, 1, 2].map(i => machineSVG('s4-mc' + i) + clockSVG('s4-ck' + i) + `<g id="s4-wt${i}">${bubbleSVG('s4-wti' + i, 'รอ...', 220, 48)}</g>`).join('') +
+        conveyorSVG('s4-cv0', 260) + conveyorSVG('s4-cv1', 260) +
+        workerSVG('s4-w') + boxSVG('s4-wb') +
+        `<g id="s4-tired">${tagSVG('s4-tiredi', 'เหนื่อย~', '#fff', '#fff', 56)}</g>` +
+        `<g id="s4-tg"><rect class="ink" x="-230" y="-90" width="460" height="150" rx="20" fill="#fff"/>
+         <text class="txt" x="0" y="-32" font-size="40" text-anchor="middle" fill="${INK}">เป้าหมาย</text>
+         <rect class="thin" x="-190" y="0" width="380" height="36" rx="18" fill="${NAVY2}"/>
+         <rect id="s4-bar" class="thin" x="-190" y="0" width="250" height="36" rx="18" fill="${ORANGE}"/></g>` +
+        [0, 1, 2, 3, 4].map(i => `<g id="s4-coin${i}"><circle class="ink" r="34" fill="#ffd34d"/><text class="txt" y="14" font-size="40" text-anchor="middle" fill="${INK}">฿</text></g>`).join('') +
+        `<g id="s4-ready">${tagSVG('s4-readyi', 'พร้อมทำงาน!', '#2ecc71', '#5be39a', 64)}</g>` +
+        mascotSVG('s4-m') + '</g>',
+    render(l, f) {
+        const sc = sceneById('s4'), L = linesOf('s4'), l2 = L[1].from - sc.from, l3 = L[2].from - sc.from;
+        const xs = [330, 960, 1590];
+        for (let i = 0; i < 3; i++) {
+            // only one station "works" at a time; the others sit and wait
+            const turn = Math.floor(l / 40) % 3 === i;
+            poseMachine('s4-mc' + i, f, { x: xs[i], y: 860, s: .5, work: turn ? 1 : 0, stopped: 0 });
+            tf('s4-ck' + i, xs[i], 400, pop(l, 10 + i * 6, 12) * .8); at('s4-ck' + i + '-h', 'transform', `rotate(${l * 6})`);
+            tf('s4-wt' + i, xs[i] + 30, 280, (turn ? 0 : 1) * pop(l, 20 + i * 6, 12) * (1 + Math.sin(l * .3) * .05));
+        }
+        poseConveyor('s4-cv0', f, 470, 860, .9, Math.floor(l / 40) % 3 === 0 ? .5 : 0, 260);
+        poseConveyor('s4-cv1', f, 1100, 860, .9, Math.floor(l / 40) % 3 === 1 ? .5 : 0, 260);
+        const wk = l > l2 - 10 && l < l3 + 40;
+        const lift = Math.max(0, Math.sin(l * .25));
+        poseWorker('s4-w', f, { x: 1280, y: lerp(1400, 880, pop(l, l2 - 10, 16)) + (l > l3 + 40 ? (l - l3 - 40) * 6 : 0), s: .75, sq: 1 - lift * .06,
+            armL: 150 * lift, armR: -150 * lift, mood: 'tired', sweat: 1, tilt: Math.sin(l * .25) * 4 });
+        poseBox('s4-wb', 1280, wk ? 880 - 300 * .75 * lift - 40 : -400, .7, 0, 'worried', f);
+        tf('s4-tired', 1470, 560 + Math.sin(l * .2) * 10, wk ? pop(l, l2 + 8, 12) : 0);
+        const tg = pop(l, l3 + 4, 14);
+        tf('s4-tg', 1520, 600, tg * .8);
+        at('s4-bar', 'width', lerp(250, 70, inv(l, l3 + 20, l3 + 70)).toFixed(1));
+        for (let i = 0; i < 5; i++) {
+            const t = inv(l, l3 + 30 + i * 6, l3 + 90 + i * 6);
+            tf('s4-coin' + i, 1500 + t * (300 + i * 40), 520 - t * (500 + i * 30) + Math.sin(t * 9 + i) * 20, t > 0 && t < 1 ? .9 : 0, t * 400);
+        }
+        const rd = pop(l, l3 + 100, 14);
+        tf('s4-ready', 960, 175, rd); op('s4-ready', inv(l, l3 + 100, l3 + 104));
+        const tk = mouthAt(f);
+        poseMascot('s4-m', f, { x: 150, y: 880, s: .55, talk: tk, armL: 30, armR: -60 - tk * 50, bounce: tk * 5, brow: l > l3 ? -.6 : .4, look: 1 });
+        CAM.x = Math.sin(l * .01) * 20;
+    }
+};
+
+/* ---- s5: designing from the whole picture ------------------------------ */
+SCENES.s5 = {
+    svg: W('s5') +
+        `<g id="s5-bp"><rect class="ink" x="-520" y="-300" width="1040" height="600" rx="24" fill="#123a6b"/>
+         <path stroke="#3d6ea8" stroke-width="2" d="${Array.from({ length: 25 }, (_, i) => `M${-500 + i * 42},-290 L${-500 + i * 42},290`).join(' ')} ${Array.from({ length: 14 }, (_, i) => `M-510,${-280 + i * 42} L510,${-280 + i * 42}`).join(' ')}" fill="none"/>
+         <g id="s5-one">${conveyorSVG('s5-cv', 560)}</g>
+         <g id="s5-map">${['รับวัตถุดิบ', 'ผลิต', 'บรรจุ', 'จัดเก็บ'].map((t, i) => `<g transform="translate(${-390 + i * 260},${i % 2 ? 60 : -60})">${stationSVG('s5-st' + i, t, 190)}</g>`).join('')}
+           <path id="s5-route" class="ink" d="M-295,-60 L-225,60 M-35,60 L35,-60 M225,-60 L295,60" fill="none" stroke="${ORANGE}" stroke-dasharray="18 14"/></g>
+         <text id="s5-cap" class="txt" y="250" font-size="44" text-anchor="middle" fill="#fff">ภาพรวมกระบวนการผลิต</text></g>` +
+        `<g id="s5-len">${tagSVG('s5-leni', 'ยาวเท่าไร?', '#fff', '#fff', 58)}</g>` +
+        `<g id="s5-spd"><circle class="ink" r="70" fill="#fff"/><path class="thin" d="M-50,20 A55 55 0 0 1 50,20" fill="none" stroke="${ORANGE}" stroke-width="10"/>
+         <path id="s5-ndl" class="ink" d="M0,20 L0,-40" fill="none"/><text class="txt" y="62" font-size="30" text-anchor="middle" fill="${INK}">เร็ว?</text></g>` +
+        `<g id="s5-x"><path class="ink" d="M-90,-90 Q0,0 90,90 M90,-90 Q0,0 -90,90" fill="none" stroke="#ff3b30" stroke-width="14"/></g>` +
+        mascotSVG('s5-m') + '</g>',
+    render(l, f) {
+        const sc = sceneById('s5'), L = linesOf('s5'), l2 = L[1].from - sc.from;
+        tf('s5-bp', 1150, 450, pop(l, 4, 16) * .95, Math.sin(l * .04) * .8);
+        const ov = inv(l, l2, l2 + 20);
+        tf('s5-one', -280, 120, 1 - ov); op('s5-one', 1 - ov);
+        poseConveyor('s5-cv', f, 0, 0, 1, .5, 560);
+        tf('s5-map', 0, -40, outBack(ov)); op('s5-map', ov);
+        at('s5-route', 'stroke-dashoffset', (-l * 2).toFixed(0));
+        op('s5-cap', inv(l, l2 + 20, l2 + 30));
+        const q1 = pop(l, 50, 12) * (1 - ov), q2 = pop(l, 80, 12) * (1 - ov);
+        tf('s5-len', 900, 300, q1); op('s5-len', q1 > 0.01 ? 1 : 0);
+        tf('s5-spd', 1420, 300, q2); at('s5-ndl', 'transform', `rotate(${Math.sin(l * .3) * 70})`);
+        const xx = pop(l, l2 - 30, 10) * (1 - ov);
+        tf('s5-x', 1160, 300, xx * 1.8); op('s5-x', xx > .01 ? 1 : 0);
+        const tk = mouthAt(f);
+        poseMascot('s5-m', f, { x: 330, y: 960, s: .9, talk: tk, armR: -110 + Math.sin(l * .15) * 20, armL: 20, bounce: tk * 8, brow: .6, look: 1, tilt: 4 });
+    }
+};
+
+/* ---- s5b: the four questions ------------------------------------------- */
+const ICONS = [
+    `${boxSVG('s5b-i0b')}<path class="ink" d="M-110,40 L110,40 M0,40 L0,90 M-60,90 L60,90" fill="none"/>`,
+    `<circle class="ink" cx="-90" cy="0" r="34" fill="${ORANGE}"/><text class="txt" x="-90" y="13" font-size="36" text-anchor="middle" fill="#fff">A</text>
+     <circle class="ink" cx="90" cy="0" r="34" fill="#2ecc71"/><text class="txt" x="90" y="13" font-size="36" text-anchor="middle" fill="#fff">B</text>
+     <path id="s5b-i1p" class="ink" d="M-56,0 Q0,-80 56,0" fill="none" stroke-dasharray="14 12"/>`,
+    `<path class="ink" d="M-90,30 A90 90 0 0 1 90,30" fill="none" stroke="${ORANGE}" stroke-width="16"/><path id="s5b-i2n" class="ink" d="M0,30 L0,-60" fill="none"/><circle r="10" cy="30" fill="${INK}"/>`,
+    `<path class="ink" d="M-70,0 Q-40,-50 0,0 Q40,50 70,0 Q30,-40 0,10 Q-30,50 -70,0" fill="none" stroke="#ff3b30"/>
+     <g id="s5b-i3g"><circle class="ink" cx="0" cy="0" r="58" fill="none" stroke-width="12"/><path class="ink" d="M42,42 L92,92" stroke-width="18" fill="none"/></g>`
+];
+const QS = ['ขนาด & น้ำหนัก', 'จากไหน → ไปไหน', 'รองรับได้แค่ไหน', 'จุดที่ติดขัด'];
+SCENES.s5b = {
+    svg: W('s5b') + QS.map((q, i) => cardSVG('s5b-c' + i, q, ICONS[i])).join('') + mascotSVG('s5b-m') + '</g>',
+    render(l, f, len) {
+        const sc = sceneById('s5b'), L = linesOf('s5b')[0], ls = L.from - sc.from, ld = L.to - L.from;
+        const active = clamp(Math.floor(inv(l, ls, ls + ld) * 4), 0, 3);
+        for (let i = 0; i < 4; i++) {
+            const st = ls + i * ld / 4;
+            const on = l >= st && active === i;
+            tf('s5b-c' + i, 280 + i * 453, 440 + (on ? Math.sin(l * .3) * -14 : 0), pop(l, st, 14) * (on ? 1.06 : .94), on ? Math.sin(l * .15) * 2 : (i - 1.5) * 2);
+            at('s5b-c' + i + '-bd', 'fill', on ? CARD : '#fff');
+        }
+        poseBox('s5b-i0b', 0, 40 + Math.sin(l * .3) * 4, .9, 0, 'worried', f);
+        at('s5b-i1p', 'stroke-dashoffset', (-l * 2).toFixed(0));
+        at('s5b-i2n', 'transform', `rotate(${Math.sin(l * .2) * 60} 0 30)`);
+        at('s5b-i3g', 'transform', `translate(${Math.sin(l * .12) * 40},${Math.cos(l * .17) * 20})`);
+        const tk = mouthAt(f);
+        poseMascot('s5b-m', f, { x: 960, y: 900, s: .5, talk: tk, armL: -120 + Math.sin(l * .2) * 10, armR: 120 - Math.sin(l * .2) * 10, bounce: tk * 6, brow: .7 });
+    }
+};
+
+/* ---- s6: a well-designed line flows ------------------------------------ */
+const FLOW_N = 10;
+SCENES.s6 = {
+    svg: W('s6') + `<path class="ink" d="M-20,900 L1960,900" fill="none" stroke="#fff"/>` +
+        photoSVG('s6-p0', 'roller-conveyor.jpg', 'ผลงาน BSS') + photoSVG('s6-p1', 'pvc-conveyor-belt-system.jpg', 'ผลงาน BSS') + photoSVG('s6-p2', 'chain-conveyor.jpg', 'ผลงาน BSS') +
+        conveyorSVG('s6-cv', 1840) + Array.from({ length: FLOW_N }, (_, i) => boxSVG('s6-b' + i)).join('') +
+        [0, 1, 2, 3, 4, 5].map(i => `<g id="s6-sp${i}"><path class="ink" d="M0,-30 L8,-8 L30,0 L8,8 L0,30 L-8,8 L-30,0 L-8,-8 Z" fill="#ffd34d"/></g>`).join('') +
+        workerSVG('s6-w1') + workerSVG('s6-w2') + mascotSVG('s6-m') + '</g>',
+    render(l, f) {
+        for (let i = 0; i < 3; i++) {
+            const p = pop(l, 20 + i * 14, 16);
+            tf('s6-p' + i, 480 + i * 480, 260 + Math.sin(l * .06 + i) * 8, p * .78, (i - 1) * 6 + Math.sin(l * .05 + i) * 2);
+        }
+        poseConveyor('s6-cv', f, 40, 760, 1, 1.4, 1840);
+        for (let i = 0; i < FLOW_N; i++) {
+            const x = ((l * 8 + i * 200) % 2000) - 40;
+            poseBox('s6-b' + i, x, 610 - Math.abs(Math.sin(l * .25 + i)) * 6, .95, Math.sin(l * .25 + i) * 4, 'happy', f);
+        }
+        for (let i = 0; i < 6; i++) {
+            const t = ((l + i * 13) % 40) / 40;
+            tf('s6-sp' + i, 200 + hash(i) * 1500, 470 + hash(i + 4) * 200, Math.sin(t * Math.PI) * .9, t * 180);
+        }
+        poseWorker('s6-w1', f, { x: 300, y: 900, s: .7, armR: -160, armL: 20, bounce: Math.abs(Math.sin(l * .2)) * 10, mood: 'happy' });
+        poseWorker('s6-w2', f, { x: 1620, y: 900, s: .7, armL: 160, armR: -20, bounce: Math.abs(Math.cos(l * .2)) * 10, mood: 'happy' });
+        const tk = mouthAt(f), dance = Math.sin(l * .35);
+        poseMascot('s6-m', f, { x: 960 + dance * 30, y: 900, s: .55, talk: tk, armL: -140 + dance * 30, armR: 140 + dance * 30, bounce: Math.abs(dance) * 30, tilt: dance * 8, sq: 1 + Math.abs(Math.cos(l * .35)) * .05, brow: 1 });
+    }
+};
+
+/* ---- s7: don't just add more -------------------------------------------- */
+const OPTS = ['+ พนักงาน', '+ เครื่องจักร', 'เร่งให้เร็วขึ้น'];
+SCENES.s7 = {
+    svg: W('s7') +
+        OPTS.map((o, i) => `<g id="s7-o${i}"><rect class="ink" x="-210" y="-110" width="420" height="200" rx="30" fill="#fff"/>
+          <text class="txt" y="14" font-size="52" text-anchor="middle" fill="${INK}">${o}</text>
+          <g id="s7-pz${i}" opacity="0"><rect class="ink" x="-120" y="-150" width="240" height="70" rx="16" fill="#ff3b30" transform="rotate(-8)"/>
+          <text class="txt" y="-100" font-size="40" text-anchor="middle" fill="#fff" transform="rotate(-8)">รอก่อน!</text></g></g>`).join('') +
+        `<g id="s7-line">${['1', '2', '3', '4'].map((t, i) => `<g transform="translate(${-600 + i * 400},0)">${stationSVG('s7-st' + i, 'ขั้นที่ ' + t, 200)}</g>`).join('')}
+         <path class="ink" d="M-500,0 L-300,0 M-100,0 L100,0 M300,0 L500,0" fill="none" stroke="#fff"/>
+         <g id="s7-knot"><circle class="ink" cx="200" cy="0" r="40" fill="#ff3b30"/><text class="txt" x="200" y="16" font-size="48" text-anchor="middle" fill="#fff">!</text></g></g>` +
+        `<g id="s7-mag"><circle class="ink" r="130" fill="#ffffff" fill-opacity=".18" stroke-width="16"/><path class="ink" d="M92,92 L200,200" stroke-width="30" fill="none"/></g>` +
+        mascotSVG('s7-m') + '</g>',
+    render(l, f) {
+        const sc = sceneById('s7'), L = linesOf('s7'), l1 = L[0].to - sc.from, l2 = L[1].from - sc.from;
+        const up = outCubic(inv(l, l2, l2 + 24));
+        for (let i = 0; i < 3; i++) {
+            const st = 16 + i * (l1 - 40) / 3;
+            tf('s7-o' + i, 420 + i * 540, lerp(400, -300, up) + Math.sin(l * .2 + i) * 6, pop(l, st, 14), (i - 1) * 4);
+            op('s7-pz' + i, inv(l, l1 - 6 + i * 4, l1 - 2 + i * 4));
+        }
+        const ln = pop(l, l2 + 10, 18);
+        tf('s7-line', 960, 560, ln * .95); op('s7-line', inv(l, l2 + 10, l2 + 16));
+        const sweep = inOut(inv(l, l2 + 30, l2 + 110));
+        const mx = lerp(-600, 200, sweep);
+        tf('s7-mag', 960 + mx * .95, 560 + Math.sin(l * .2) * 10, inv(l, l2 + 24, l2 + 32));
+        tf('s7-knot', 0, 0, sweep > .97 ? 1 + Math.sin(l * .6) * .15 : 0);
+        const tk = mouthAt(f), stopHand = l > l1 - 20 && l < l2 + 20;
+        poseMascot('s7-m', f, { x: 1740, y: 900, s: .6, talk: tk, armR: stopHand ? -150 : -40 - tk * 40, armL: 20, bounce: tk * 6, brow: stopHand ? -.8 : .5 });
+    }
+};
+
+/* ---- s7b: it's how the parts fit ---------------------------------------- */
+const PIECE = 'M-110,-110 L-20,-110 a24 24 0 1 1 40 0 L110,-110 L110,-20 a24 24 0 1 1 0 40 L110,110 L-110,110 Z';
+SCENES.s7b = {
+    svg: W('s7b') + workerSVG('s7b-w') + machineSVG('s7b-mc') + checkSVG('s7b-c1') + checkSVG('s7b-c2') +
+        [0, 1, 2].map(i => `<g id="s7b-pz${i}"><path class="ink" d="${PIECE}" fill="${[ORANGE, '#fff', ORANGE2][i]}"/>
+          <text class="txt" y="16" font-size="40" text-anchor="middle" fill="${INK}">${['คน', 'เครื่องจักร', 'ลำเลียง'][i]}</text></g>`).join('') +
+        `<g id="s7b-ok">${tagSVG('s7b-oki', 'ลงตัว!', '#2ecc71', '#5be39a', 96)}</g>` + mascotSVG('s7b-m') + '</g>',
+    render(l, f) {
+        const sc = sceneById('s7b'), L = linesOf('s7b'), l2 = L[1].from - sc.from;
+        const out = outCubic(inv(l, l2, l2 + 16));
+        poseWorker('s7b-w', f, { x: 600, y: lerp(820, 1500, out), s: .9, armR: -150, armL: 20, mood: 'happy', bounce: Math.abs(Math.sin(l * .25)) * 8 });
+        poseMachine('s7b-mc', f, { x: 1300, y: lerp(820, 1500, out), s: .7 });
+        tf('s7b-c1', 600, lerp(330, -200, out), pop(l, 20, 12));
+        tf('s7b-c2', 1300, lerp(330, -200, out), pop(l, 36, 12));
+        const fit = outElastic(inv(l, l2 + 40, l2 + 80));
+        for (let i = 0; i < 3; i++) {
+            const loose = (i - 1) * 300;
+            const wob = (1 - fit) * Math.sin(l * .4 + i * 2) * 16;
+            tf('s7b-pz' + i, 960 + lerp(loose, (i - 1) * 205, fit), 480 + wob, pop(l, l2 + 8 + i * 6, 12) * .95, (1 - fit) * (i - 1) * 18);
+        }
+        tf('s7b-ok', 960, 780, pop(l, l2 + 82, 12)); op('s7b-ok', inv(l, l2 + 82, l2 + 86));
+        const tk = mouthAt(f);
+        poseMascot('s7b-m', f, { x: 1740, y: 900, s: .55, talk: tk, armL: 20, armR: -60 - tk * 50, bounce: tk * 6, brow: .5, look: -1 });
+    }
+};
+
+/* ---- s8: everything turning together ------------------------------------ */
+SCENES.s8 = {
+    svg: W('s8') +
+        gearSVG('s8-g0', 140, 12, 'คน', '#fff') + gearSVG('s8-g1', 105, 9, 'เครื่องจักร', ORANGE2) + gearSVG('s8-g2', 140, 12, 'ลำเลียง', ORANGE) +
+        photoSVG('s8-p0', 'conveyor-belt-line.jpg', 'ผลงาน BSS') + photoSVG('s8-p1', 'roller-conveyor-system.jpg', 'ผลงาน BSS') +
+        photoSVG('s8-p2', 'conveyor-installation-service.jpg', 'ผลงาน BSS') + photoSVG('s8-p3', 'pvc-belt-conveyor.jpg', 'ผลงาน BSS') +
+        Array.from({ length: 24 }, (_, i) => `<rect id="s8-cf${i}" class="thin" x="-10" y="-16" width="20" height="32" rx="4" fill="${[ORANGE, '#fff', '#ffd34d', '#5be39a'][i % 4]}"/>`).join('') +
+        `<g id="s8-msg">${tagSVG('s8-msgi', 'ทุกขั้นตอน ทำงานร่วมกัน', '#fff', '#fff', 72)}</g>` +
+        mascotSVG('s8-m') + '</g>',
+    render(l, f) {
+        const sc = sceneById('s8'), L = linesOf('s8'), l2 = L[1].from - sc.from, l3 = L[2].from - sc.from;
+        // before line 2 the gears catch and jam; from line 2 they turn as one
+        const smooth = l >= l2;
+        const a = smooth ? (l - l2) * 2.4 : (Math.floor(l / 18) * 8 + (l % 18 < 3 ? (l % 18) * 3 : 9) * 0);
+        const jit = smooth ? 0 : Math.sin(l * 2.3) * 2.5;
+        const gs = pop(l, 6, 16) * (1 - inv(l, l3, l3 + 20) * .35);
+        const gy = lerp(470, 330, inv(l, l3, l3 + 20));
+        tf('s8-g0', 960 - 252 * gs, gy, gs); at('s8-g0-rot', 'transform', `rotate(${a + jit})`);
+        tf('s8-g1', 960, gy + 60 * gs, gs); at('s8-g1-rot', 'transform', `rotate(${-a * 140 / 105 + 10 - jit})`);
+        tf('s8-g2', 960 + 252 * gs, gy, gs); at('s8-g2-rot', 'transform', `rotate(${a + 15 + jit})`);
+        tf('s8-msg', 960, 160, pop(l, l2 + 20, 14)); op('s8-msg', inv(l, l2 + 20, l2 + 24) * (1 - inv(l, l3, l3 + 10)));
+        const spots = [[300, 330, -8], [1620, 330, 7], [380, 720, 6], [1540, 720, -6]];
+        for (let i = 0; i < 4; i++) {
+            const p = pop(l, l3 + 10 + i * 10, 16);
+            tf('s8-p' + i, spots[i][0] + Math.sin(l * .05 + i) * 6, spots[i][1], p * .72, spots[i][2] + Math.sin(l * .04 + i) * 2);
+        }
+        for (let i = 0; i < 24; i++) {
+            const t = ((l - l3 + i * 9) % 90) / 90;
+            const on = l > l3;
+            tf('s8-cf' + i, hash(i) * 1920 + Math.sin(t * 8 + i) * 40, -40 + t * 1160, on ? 1 : 0, t * 720 + i * 30);
+        }
+        const tk = mouthAt(f), party = l > l3;
+        poseMascot('s8-m', f, { x: 960, y: 900, s: party ? .7 : .55, talk: tk, armL: party ? -150 + Math.sin(l * .4) * 20 : 20, armR: party ? 150 - Math.sin(l * .4) * 20 : -50 - tk * 40,
+            bounce: party ? Math.abs(Math.sin(l * .25)) * 50 : tk * 6, sq: party ? 1 + Math.abs(Math.cos(l * .25)) * .06 : 1, brow: 1 });
+    }
+};
+
+/* ---- s9: end card -------------------------------------------------------- */
+SCENES.s9 = {
+    svg: W('s9') +
+        `<g id="s9-card"><rect class="ink" x="-560" y="-330" width="1120" height="660" rx="40" fill="#fff"/>
+         <image href="../../logo.png" x="-80" y="-300" width="160" height="160"/>
+         <text class="txt" y="-80" font-size="76" text-anchor="middle" fill="${INK}">BSS <tspan fill="${ORANGE}">SOLUTION</tspan> (1978)</text>
+         <path class="ink" d="M-260,-40 L260,-40" fill="none" stroke="${ORANGE}"/>
+         <text class="txt" x="-330" y="40" font-size="46" fill="${INK}"><tspan fill="${ORANGE}">TEL</tspan>  02-317-5470-3</text>
+         <text class="txt" x="-330" y="120" font-size="46" fill="${INK}"><tspan fill="${ORANGE}">MAIL</tspan>  sale.bss1978@gmail.com</text>
+         <text class="txt" x="-330" y="200" font-size="46" fill="${INK}"><tspan fill="${ORANGE}">LINE</tspan>  bss_1978</text></g>` +
+        photoSVG('s9-p', 'chain-conveyor-system.jpg', 'ผลงาน BSS') + mascotSVG('s9-m') + '</g>',
+    render(l, f) {
+        tf('s9-card', 860, 470, pop(l, 4, 18) * .95, Math.sin(l * .04) * .6);
+        tf('s9-p', 230, 820, pop(l, 24, 16) * .62, -10);
+        const tk = mouthAt(f);
+        poseMascot('s9-m', f, { x: 1640, y: 980, s: .75, talk: tk, armR: -150 + Math.sin(l * .5) * 30, armL: 20, bounce: Math.abs(Math.sin(l * .2)) * 14, brow: 1, look: -1 });
+    }
+};
+
+/* ------------------------------------------------------- camera & fx */
+const CAM = { x: 0, y: 0, z: 1 };
+function camera(f) {
+    // punch in on the first frames of every spoken line — the "วิบวาบ" beat
+    let punch = 0;
+    for (const ln of TL.lines) { const d = f - ln.from; if (d >= 0 && d < 14) punch = Math.max(punch, Math.exp(-d / 4) * .04); }
+    const z = CAM.z * (1 + punch);
+    const dx = CAM.x + Math.sin(f * .013) * 8, dy = CAM.y + Math.cos(f * .011) * 6;
+    at('cam', 'transform', `translate(${960 + dx},${540 + dy}) scale(${z.toFixed(4)}) translate(-960,-540)`);
+}
+
+function wipe(f) {
+    // a wavy orange band with an inked edge sweeps across each scene change
+    let html = '';
+    for (const s of TL.scenes.slice(1)) {
+        const d = f - s.from;
+        if (d < -10 || d > 10) continue;
+        const t = (d + 10) / 20;
+        const x = lerp(-400, 2320, inOut(t));
+        let edgeL = '', edgeR = '';
+        for (let y = -20; y <= 1100; y += 60) {
+            edgeL += `L${(x - 420 + Math.sin(y * .02 + f) * 26).toFixed(0)},${y} `;
+            edgeR = `L${(x + Math.sin(y * .021 + f * .8) * 26).toFixed(0)},${y} ` + edgeR;
+        }
+        html += `<path d="M${x - 420},-20 ${edgeL}${edgeR}Z" fill="${ORANGE}" stroke="${INK}" stroke-width="10"/>`;
+        if (Math.abs(d) <= 1) html += `<rect width="1920" height="1080" fill="#fff" opacity="${.35 - Math.abs(d) * .15}"/>`;
+    }
+    $('wipe').innerHTML = html;
+}
+
+function subtitles(f) {
+    const i = lineAt(f);
+    const el = $('subText');
+    if (i < 0 || f > TL.lines[i].to + 6) { el.textContent = ''; el.parentNode.style.opacity = 0; return; }
+    const ln = TL.lines[i];
+    // split on the breath marks into chunks short enough for one line,
+    // then show each chunk for a share of the line proportional to its length
+    const words = ln.text.split(' ');
+    const chunks = [];
+    let cur = '';
+    for (const w of words) { if ((cur + ' ' + w).trim().length > 34 && cur) { chunks.push(cur.trim()); cur = w; } else cur += ' ' + w; }
+    if (cur.trim()) chunks.push(cur.trim());
+    const total = chunks.reduce((a, c) => a + c.length, 0);
+    const p = inv(f, ln.from, ln.to) * total;
+    let acc = 0, k = 0;
+    for (; k < chunks.length - 1; k++) { acc += chunks[k].length; if (p < acc) break; }
+    el.textContent = chunks[k];
+    el.parentNode.style.opacity = 1;
+}
+
+/* ---------------------------------------------------------------- run */
+function build() {
+    buildBackground();
+    $('world').innerHTML = Object.values(SCENES).map(s => s.svg).join('');
+}
+
+let lastScene = null;
+function render(f) {
+    f = clamp(f, 0, TOTAL - 1);
+    const sc = TL.scenes.find(s => f >= s.from && f < s.to) || TL.scenes[TL.scenes.length - 1];
+    if (sc.id !== lastScene) {
+        Object.keys(SCENES).forEach(id => at(id, 'display', id === sc.id ? 'inline' : 'none'));
+        lastScene = sc.id;
+    }
+    CAM.x = 0; CAM.y = 0; CAM.z = 1;
+    SCENES[sc.id].render(f - sc.from, f, sc.to - sc.from);
+    camera(f);
+    // hand-drawn boil: a new noise pattern every 4 frames
+    at('boilNoise', 'seed', String(1 + Math.floor(f / 4) % 6));
+    at('bgPat', 'transform', `translate(${(-f * .35) % 400},${(-f * .2) % 400})`);
+    wipe(f);
+    subtitles(f);
+}
+
+build();
+render(0);
+window.__FPS = FPS;
+window.__TOTAL = TOTAL;
+window.__seek = render;
+window.__ready = true;
+})();
+</script>
+</body>
+</html>
