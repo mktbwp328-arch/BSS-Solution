@@ -67,7 +67,8 @@ async function full() {
     const enc = spawn(ffmpeg, ['-y', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-',
         '-i', path.join(ROOT, 'audio.wav'), '-map', '0:v', '-map', '1:a',
         '-c:v', 'libx264', '-preset', 'medium', '-crf', '19', '-pix_fmt', 'yuv420p',
-        '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', OUT],
+        // -1.5 dB keeps the AAC true peak under 0 dBFS; at unity it touched 0.0
+        '-af', 'volume=-1.5dB', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', OUT],
         { stdio: ['pipe', 'ignore', 'pipe'] });
     let err = '';
     enc.stderr.on('data', d => { err = (err + d).slice(-4000); });

@@ -95,7 +95,8 @@ const sparkle = () => tone(0.6, t => (Math.sin(TAU * 1760 * t) + Math.sin(TAU * 
     const clips = [];
     for (let i = 0; i < LINES.length; i++) {
         process.stdout.write(`\rvoice ${i + 1}/${LINES.length}`);
-        clips.push(trim(decode(await synth(LINES[i][1], i))));
+        // [2] is the spoken form when it differs from the subtitle text
+        clips.push(trim(decode(await synth(LINES[i][2] || LINES[i][1], i))));
     }
     console.log();
 
