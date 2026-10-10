@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,800;1,900&family=Mali:wght@700&display=swap" rel="stylesheet">
+<style>
+/* Style test for a manga-look cut: one 9:16 page, no animation yet. */
+*{margin:0;padding:0}html,body{width:1080px;height:1920px;overflow:hidden;background:#fff}
+svg{display:block}
+</style></head><body>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <!-- screentone: the halftone dot fill manga uses for mid-greys -->
+  <pattern id="tone" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="12" height="12" fill="#fff"/><circle cx="6" cy="6" r="2.6" fill="#111"/></pattern>
+  <pattern id="toneDark" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="10" height="10" fill="#fff"/><circle cx="5" cy="5" r="3.6" fill="#111"/></pattern>
+  <pattern id="toneOrange" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+    <rect width="12" height="12" fill="#ff8c00"/><circle cx="6" cy="6" r="2.4" fill="#c25e00"/></pattern>
+  <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+    <rect width="10" height="10" fill="#fff"/><path d="M0,0 L0,10" stroke="#111" stroke-width="3"/></pattern>
+  <clipPath id="p1"><path d="M30,30 L1050,30 L1050,600 L30,690 Z"/></clipPath>
+  <clipPath id="p2"><path d="M30,720 L1050,630 L1050,1500 L30,1560 Z"/></clipPath>
+  <clipPath id="p3"><path d="M30,1590 L1050,1530 L1050,1890 L30,1890 Z"/></clipPath>
+</defs>
+<rect width="1080" height="1920" fill="#0a192f"/>
+
+<!-- PANEL 1: factory, boxes jammed — speed lines burst -->
+<g clip-path="url(#p1)">
+  <rect width="1080" height="700" fill="#fff"/>
+  <g stroke="#111" stroke-width="3">
+    <script>/* placeholder */</script>
+  </g>
+  <g id="burst1"></g>
+  <g transform="translate(140,380)">
+    <rect x="0" y="80" width="800" height="70" fill="url(#tone)" stroke="#111" stroke-width="6"/>
+    <g fill="#fff" stroke="#111" stroke-width="5">
+      <rect x="20" y="-10" width="120" height="90" transform="rotate(-8 80 35)"/><rect x="150" y="-30" width="120" height="110" transform="rotate(6 210 25)"/>
+      <rect x="90" y="-130" width="120" height="110" transform="rotate(-14 150 -75)"/><rect x="270" y="-10" width="120" height="90"/>
+      <rect x="220" y="-140" width="110" height="110" transform="rotate(12 275 -85)"/><rect x="160" y="-250" width="110" height="100" transform="rotate(-20 215 -200)"/>
+    </g>
+    <path d="M30,-20 L140,-20 M160,-40 L270,-40" stroke="#111" stroke-width="3"/>
+  </g>
+  <text x="640" y="250" font-family="Kanit" font-style="italic" font-weight="900" font-size="190" fill="#ff8c00" stroke="#111" stroke-width="14" paint-order="stroke" transform="rotate(-10 640 250)">ตึง!!</text>
+</g>
+<path d="M30,30 L1050,30 L1050,600 L30,690 Z" fill="none" stroke="#fff" stroke-width="10"/>
+
+<!-- PANEL 2: the hero close-up -->
+<g clip-path="url(#p2)">
+  <rect y="600" width="1080" height="1000" fill="url(#toneDark)"/>
+  <g id="lines2"></g>
+  <g transform="translate(540,1180)">
+    <!-- jacket / shoulders -->
+    <path d="M-420,420 L-300,120 Q-150,40 0,80 Q150,40 300,120 L420,420 Z" fill="#111"/>
+    <path d="M-120,90 L0,300 L120,90 L60,70 L0,180 L-60,70 Z" fill="#fff" stroke="#111" stroke-width="6"/>
+    <rect x="160" y="170" width="120" height="56" rx="8" fill="#ff8c00" stroke="#111" stroke-width="5" transform="rotate(-6 220 198)"/>
+    <text x="220" y="210" font-family="Kanit" font-weight="900" font-style="italic" font-size="38" text-anchor="middle" fill="#111" transform="rotate(-6 220 198)">BSS</text>
+    <!-- neck + face -->
+    <path d="M-60,40 L-50,110 L50,110 L60,40 Z" fill="#fff" stroke="#111" stroke-width="6"/>
+    <path d="M-60,30 L-50,90 L50,90 L60,30 Z" fill="url(#hatch)" opacity=".7"/>
+    <path d="M-150,-200 Q-160,-60 -110,10 L-30,70 Q0,84 30,70 L110,10 Q160,-60 150,-200 Q0,-260 -150,-200 Z" fill="#fff" stroke="#111" stroke-width="7"/>
+    <path d="M60,-160 Q150,-120 130,-20 L110,10 L60,40 Q120,-60 60,-160 Z" fill="url(#hatch)"/>
+    <!-- eyes: sharp, with highlights -->
+    <path d="M-120,-90 Q-80,-118 -30,-96 L-40,-74 Q-84,-86 -118,-74 Z" fill="#111"/>
+    <path d="M120,-90 Q80,-118 30,-96 L40,-74 Q84,-86 118,-74 Z" fill="#111"/>
+    <ellipse cx="-76" cy="-88" rx="14" ry="10" fill="#ff8c00"/><ellipse cx="76" cy="-88" rx="14" ry="10" fill="#ff8c00"/>
+    <circle cx="-70" cy="-92" r="4" fill="#fff"/><circle cx="82" cy="-92" r="4" fill="#fff"/>
+    <path d="M-128,-130 L-26,-116 M128,-130 L26,-116" stroke="#111" stroke-width="10" stroke-linecap="round"/>
+    <path d="M-8,-50 L-16,-6 L4,-4" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+    <path d="M-40,30 Q10,44 50,22" fill="none" stroke="#111" stroke-width="6" stroke-linecap="round"/>
+    <!-- spiky hair: layered blades -->
+    <g fill="#111">
+      <path d="M-180,-150 L-210,-60 L-150,-160 L-160,-40 L-110,-170 L-100,-90 L-60,-190 L-30,-120 L0,-200 L40,-120 L70,-200 L100,-110 L130,-190 L150,-90 L170,-170 L200,-60 L190,-200 Q0,-380 -190,-210 Z"/>
+      <path d="M-190,-210 L-260,-140 L-200,-180 Z M190,-210 L270,-160 L205,-185 Z M-60,-330 L-40,-420 L10,-340 Z M60,-330 L130,-400 L120,-320 Z"/>
+    </g>
+    <path d="M-120,-250 Q-40,-300 60,-260" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".9"/>
+  </g>
+  <text x="70" y="830" font-family="Kanit" font-style="italic" font-weight="900" font-size="64" fill="#fff" stroke="#111" stroke-width="10" paint-order="stroke">ปัญหาไม่ได้อยู่ที่เครื่องจักร...</text>
+</g>
+<path d="M30,720 L1050,630 L1050,1500 L30,1560 Z" fill="none" stroke="#fff" stroke-width="10"/>
+
+<!-- PANEL 3: punchline -->
+<g clip-path="url(#p3)">
+  <rect y="1500" width="1080" height="420" fill="url(#toneOrange)"/>
+  <g id="lines3"></g>
+  <text x="540" y="1760" font-family="Kanit" font-style="italic" font-weight="900" font-size="110" text-anchor="middle" fill="#fff" stroke="#111" stroke-width="16" paint-order="stroke">แต่อยู่ที่ "ระบบ"!</text>
+</g>
+<path d="M30,1590 L1050,1530 L1050,1890 L30,1890 Z" fill="none" stroke="#fff" stroke-width="10"/>
+</svg>
+<script>
+// speed lines: radial strokes converging on a focal point, the manga "impact" device
+function burst(id, cx, cy, n, r0, r1, w, color) {
+  let s = '';
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + (Math.sin(i * 12.9) * .02);
+    const rr = r0 + (Math.sin(i * 7.3) * .5 + .5) * 80;
+    const ww = w * (.4 + (Math.sin(i * 3.1) * .5 + .5));
+    s += `<path d="M${cx + Math.cos(a) * rr},${cy + Math.sin(a) * rr} L${cx + Math.cos(a) * r1},${cy + Math.sin(a) * r1}" stroke="${color}" stroke-width="${ww.toFixed(1)}" stroke-linecap="round"/>`;
+  }
+  document.getElementById(id).innerHTML = s;
+}
+burst('burst1', 520, 330, 140, 230, 1100, 7, '#111');
+burst('lines2', 540, 1080, 120, 380, 1100, 5, '#fff');
+burst('lines3', 540, 1720, 90, 280, 1000, 6, '#111');
+window.__ready = true;
+</script>
+</body></html>

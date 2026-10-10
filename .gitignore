@@ -70,3 +70,8 @@ video/cartoon/*.wav
 video/cartoon/*.log
 video/cartoon/preview/
 video/cartoon/.tmp/
+video/voice-samples.mp3
+video/manga/*.mp4
+video/manga/*.log
+video/manga/preview/
+video/manga/concept.png
