@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ปัญหาสินค้าค้างไลน์ผลิต — line-art cut 9:16</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,800;1,900&family=Mali:wght@600;700&family=Sarabun:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Line-art 9:16 cut, derived from the manga page: thin even-weight lines,
+   flat pastel fills, white page. Real photos are traced to line drawings by
+   edge detection; alternate ones also get a flat pastel colour pass, the way
+   the reference mixes line-only and coloured figures.
+   Originally the manga-style 9:16 cut of the same narration as video/cartoon. Deterministic
+   like the others: render(f) sets every value from the frame number. Timing
+   and audio are shared with the cartoon (../cartoon/timeline.js, audio.wav).
+   No human figures — the look is carried by panels, speed lines, screentone,
+   SFX lettering and the company's real photos run through a manga filter.
+   Key content stays inside TikTok's safe area: below ~160px, above ~1500px. */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #fbfaf7; }
+#svg { position: absolute; inset: 0; }
+#cap {
+    position: absolute; left: 60px; right: 140px; top: 1340px;
+    background: #fff; border: 3.5px solid #2a2a33; border-radius: 28px; box-shadow: 0 10px 0 #ffd2a8;
+    padding: 18px 28px 22px; font-family: 'Sarabun', sans-serif; font-weight: 700;
+    font-size: 48px; line-height: 1.32; color: #2a2a33; text-align: center;
+}
+</style>
+<script src="../cartoon/timeline.js"></script>
+</head>
+<body>
+<svg id="svg" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <!-- Flat pastel fills under the old pattern ids, so the scene code is untouched -->
+  <pattern id="tone" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#eef1f6"/></pattern>
+  <pattern id="toneD" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#6f95c2"/></pattern>
+  <pattern id="toneO" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#ffc08a"/></pattern>
+  <pattern id="toneN" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#e9eff7"/></pattern>
+  <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#e9c9a1"/></pattern>
+  <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse"><rect width="64" height="64" fill="#eef3fa"/><path d="M64,0 L0,0 L0,64" fill="none" stroke="#c9d6ea" stroke-width="2"/></pattern>
+  <!-- Photo → line drawing: grey, soften, edge-detect, then invert into dark
+       lines on white. Multiplied onto the page so the white drops out. -->
+  <filter id="lineart" color-interpolation-filters="sRGB">
+    <feColorMatrix type="saturate" values="0"/>
+    <feGaussianBlur stdDeviation="1.1"/>
+    <feConvolveMatrix order="3" kernelMatrix="-1 -1 -1 -1 8 -1 -1 -1 -1" preserveAlpha="true"/>
+    <feComponentTransfer>
+      <feFuncR type="linear" slope="-7" intercept="1.05"/><feFuncG type="linear" slope="-7" intercept="1.05"/><feFuncB type="linear" slope="-6.4" intercept="1.08"/>
+    </feComponentTransfer>
+  </filter>
+  <!-- Photo → flat pastel colour: soft saturation, few levels, lifted toward white -->
+  <filter id="pastel" color-interpolation-filters="sRGB">
+    <feColorMatrix type="saturate" values=".55"/>
+    <feGaussianBlur stdDeviation="2.4"/>
+    <feComponentTransfer>
+      <feFuncR type="discrete" tableValues=".55 .72 .86 .97"/><feFuncG type="discrete" tableValues=".55 .72 .86 .97"/><feFuncB type="discrete" tableValues=".6 .76 .88 .98"/>
+    </feComponentTransfer>
+  </filter>
+  <pattern id="hazard" width="56" height="56" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="56" height="56" fill="#ffd23f"/><rect width="28" height="56" fill="#2a2a33"/></pattern>
+  <!-- A faint hand tremor on every line -->
+  <filter id="hand" x="-2%" y="-2%" width="104%" height="104%">
+    <feTurbulence id="handNoise" type="fractalNoise" baseFrequency=".03" numOctaves="1" seed="3" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</defs>
+<g id="page"></g>
+<g id="hud"></g>
+<g id="fx"></g>
+</svg>
+<div id="cap"><span id="capText"></span></div>
+
+<script>
+(function () {
+'use strict';
+const TL = window.TL;
+const { FPS, TOTAL, BOX_EVERY, BOX_DELAY, BOX_MAX } = TL;
+const W = 1080, H = 1920;
+// line colour, the brand orange softened to sit with pastels, and a pale blue
+// ground where the manga used navy
+const INK = '#2a2a33', OR = '#ff8a2b', NAVY = '#e9eff7';
+
+/* ------------------------------------------------------------- helpers */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const inv = (f, a, b) => clamp((f - a) / (b - a), 0, 1);
+const lerp = (a, b, t) => a + (b - a) * t;
+// Stamping press: nothing, then the die comes down oversized, bottoms out a
+// touch under size, and seats. Used for every label, stamp and SFX word.
+const outBack = t => {
+    if (t <= 0) return 0;
+    if (t < .5) { const k = t / .5; return 1.55 - .63 * (k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2); }
+    return .92 + .08 * (1 - Math.pow(1 - (t - .5) / .5, 3));
+};
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+// Carriage on a rail: accelerate, run, hit the end stop at 75% of the move,
+// then a short damped rebound off the stop. Used for every panel slide.
+const outExpo = t => {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    if (t < .75) { const k = t / .75; return k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; }
+    const k = (t - .75) / .25;
+    return 1 + Math.sin(k * Math.PI * 2) * .022 * (1 - k);
+};
+const inOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const pop = (l, a, d = 12) => outBack(inv(l, a, a + d));
+const els = {};
+const E = id => els[id] || (els[id] = document.getElementById(id));
+const tf = (id, x, y, s = 1, r = 0) => { const e = E(id); if (e) e.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${r.toFixed(2)}) scale(${s.toFixed(3)})`); };
+const op = (id, v) => { const e = E(id); if (e) e.setAttribute('opacity', clamp(v, 0, 1).toFixed(3)); };
+const at = (id, k, v) => { const e = E(id); if (e) e.setAttribute(k, v); };
+
+const sceneById = id => TL.scenes.find(s => s.id === id);
+const linesOf = id => TL.lines.filter(l => l.scene === id);
+const lineAt = f => { for (let i = TL.lines.length - 1; i >= 0; i--) if (f >= TL.lines[i].from) return i; return -1; };
+
+/* ----------------------------------------------------------- drawing */
+const poly = pts => pts.map(p => p.join(',')).join(' ');
+
+// a panel: outer group slides; inner group is clipped to the panel shape
+function panel(id, pts, inner, fill = '#fff') {
+    return `<g id="${id}"><clipPath id="${id}-c"><polygon points="${poly(pts)}"/></clipPath>
+      <g clip-path="url(#${id}-c)"><polygon points="${poly(pts)}" fill="${fill}"/>${inner}</g>
+      <polygon points="${poly(pts)}" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/></g>`;
+}
+
+// a real photo, manga-filtered, with screentone multiplied over it
+// The company's photos are shown exactly as shot. Only the frame around them
+// is drawn: orange corner brackets, like a machine-vision inspection window.
+function photo(id, img, x, y, w, h) {
+    const c = (cx, cy, dx, dy) => `<path d="M${cx + dx * 60},${cy} L${cx},${cy} L${cx},${cy + dy * 60}" fill="none" stroke="${OR}" stroke-width="9" stroke-linecap="square"/>`;
+    const m = 26;
+    return `<g id="${id}"><image href="../../images/works/${img}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>
+      ${c(x + m, y + m, 1, 1)}${c(x + w - m, y + m, -1, 1)}${c(x + m, y + h - m, 1, -1)}${c(x + w - m, y + h - m, -1, -1)}</g>`;
+}
+
+// SFX lettering: heavy italic Kanit, ink outline, optional orange fill
+const sfx = (id, text, size, fill = OR, rot = -8) =>
+    `<g id="${id}"><text font-family="Mali" font-weight="700" font-size="${Math.round(size * .92)}" text-anchor="middle"
+      fill="${fill === OR ? OR : INK}" stroke="#fff" stroke-width="${Math.round(size * .1)}" stroke-linejoin="round" paint-order="stroke" transform="rotate(${rot * .4})">${text}</text></g>`;
+
+// rectangular caption tag
+const tag = (id, text, size = 44, fill = '#fff', color = INK) => {
+    const w = text.length * size * .62 + 60;
+    return `<g id="${id}"><rect x="${-w / 2}" y="${-size * .95}" width="${w}" height="${size * 1.4}" rx="${size * .7}" fill="${fill}" stroke="${INK}" stroke-width="3.5"/>
+      <text font-family="Mali" font-weight="700" font-size="${size}" text-anchor="middle" fill="${color}" y="${size * .1}">${text}</text></g>`;
+};
+
+const stamp = (id, text, size = 64, color = OR) =>
+    `<g id="${id}"><rect x="${-text.length * size * .34 - 30}" y="${-size}" width="${text.length * size * .68 + 60}" height="${size * 1.45}" rx="10"
+      fill="${color === OR ? '#ffe2c6' : '#dff3e6'}" stroke="${INK}" stroke-width="3.5"/><text font-family="Mali" font-weight="700" font-size="${size}" text-anchor="middle" fill="${INK}" y="${size * .15}">${text}</text></g>`;
+
+// manga box: white face, hatched side, tape
+const box = id => `<g id="${id}"><path d="M-48,-96 L48,-96 L48,0 L-48,0 Z" fill="#fff" stroke="${INK}" stroke-width="3.5"/>
+  <path d="M48,-96 L66,-110 L66,-14 L48,0 Z" fill="url(#hatch)" stroke="${INK}" stroke-width="3.5"/>
+  <path d="M-48,-96 L-30,-110 L66,-110 L48,-96 Z" fill="url(#tone)" stroke="${INK}" stroke-width="3.5"/>
+  <rect x="-9" y="-96" width="18" height="30" fill="${OR}" stroke="${INK}" stroke-width="3"/></g>`;
+
+function conveyor(id, len) {
+    const n = Math.floor(len / 100) + 1;
+    let r = '';
+    for (let i = 0; i < n; i++) r += `<g id="${id}-r${i}" transform="translate(${30 + i * ((len - 60) / (n - 1))},-60)"><circle r="24" fill="#fff" stroke="${INK}" stroke-width="3.5"/><path d="M-16,0 L16,0 M0,-16 L0,16" stroke="${INK}" stroke-width="4"/></g>`;
+    return `<g id="${id}"><path d="M24,-40 L14,60 M${len - 24},-40 L${len - 14},60 M${len / 2},-40 L${len / 2},60" stroke="${INK}" stroke-width="3.5"/>
+      <rect x="0" y="-96" width="${len}" height="72" rx="36" fill="url(#toneD)" stroke="${INK}" stroke-width="3.5"/>${r}
+      <path id="${id}-belt" d="M10,-92 L${len - 10},-92" stroke="${OR}" stroke-width="3.5" stroke-dasharray="24 20"/></g>`;
+}
+function spinConveyor(id, f, len, speed) {
+    const n = Math.floor(len / 100) + 1;
+    for (let i = 0; i < n; i++) at(`${id}-r${i}`, 'transform', `translate(${30 + i * ((len - 60) / (n - 1))},-60) rotate(${(f * speed * 7) % 360})`);
+    at(id + '-belt', 'stroke-dashoffset', (-f * speed * 3).toFixed(1));
+}
+
+const clock = id => `<g id="${id}"><circle r="70" fill="#fff" stroke="${INK}" stroke-width="3.5"/><circle r="56" fill="url(#tone)"/>
+  <path id="${id}-h" d="M0,0 L0,-50" stroke="${OR}" stroke-width="3.5" stroke-linecap="round"/><path id="${id}-m" d="M0,0 L32,0" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/><circle r="9" fill="${INK}"/></g>`;
+
+function gear(id, r, teeth, label, fill) {
+    let d = '';
+    for (let i = 0; i < teeth * 2; i++) {
+        const a0 = i / (teeth * 2) * Math.PI * 2, a1 = (i + 1) / (teeth * 2) * Math.PI * 2, rr = i % 2 ? r : r + 28;
+        d += (i ? 'L' : 'M') + (Math.cos(a0) * rr).toFixed(1) + ',' + (Math.sin(a0) * rr).toFixed(1) + ' L' + (Math.cos(a1) * rr).toFixed(1) + ',' + (Math.sin(a1) * rr).toFixed(1) + ' ';
+    }
+    return `<g id="${id}"><g id="${id}-rot"><path d="${d}Z" fill="${fill}" stroke="${INK}" stroke-width="3.5"/><circle r="${r * .45}" fill="#fff" stroke="${INK}" stroke-width="3.5"/></g>
+      <text font-family="Kanit" font-weight="800" font-size="${Math.round(r * .3)}" text-anchor="middle" y="${r * .11}" fill="${INK}">${label}</text></g>`;
+}
+
+const flowMap = (id, labels) => `<g id="${id}">${labels.map((t, i) => `<g transform="translate(0,${i * 150})"><rect x="-170" y="-50" width="340" height="96" fill="#fff" stroke="${INK}" stroke-width="3.5"/>
+  <text font-family="Kanit" font-weight="800" font-size="40" text-anchor="middle" y="14" fill="${INK}">${t}</text></g>${i < labels.length - 1 ? `<path d="M0,${i * 150 + 46} L0,${i * 150 + 100}" stroke="${OR}" stroke-width="3.5"/>` : ''}`).join('')}</g>`;
+
+// radial speed lines; the pattern re-seeds every 2 frames so they flicker
+function burst(cx, cy, n, r0, r1, w, color, seed) {
+    let s = '';
+    for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + (hash(i + seed) - .5) * .05;
+        const rr = r0 + hash(i * 3 + seed) * 110;
+        s += `M${(cx + Math.cos(a) * rr).toFixed(0)},${(cy + Math.sin(a) * rr).toFixed(0)} L${(cx + Math.cos(a) * r1).toFixed(0)},${(cy + Math.sin(a) * r1).toFixed(0)} `;
+    }
+    return `<path d="${s}" stroke="#c6d1e2" stroke-width="${(w * .45).toFixed(1)}" stroke-linecap="round" fill="none"/>`;
+}
+const lines = (id) => `<g id="${id}"></g>`;
+function setLines(id, f, cx, cy, n, r0, r1, w, color) { const e = E(id); if (e) e.innerHTML = burst(cx, cy, n, r0, r1, w, color, Math.floor(f / 2) * 17); }
+
+// horizontal motion lines for things moving sideways
+function setStreaks(id, f, y0, y1, color) {
+    let s = '';
+    const seed = Math.floor(f / 2) * 13;
+    for (let i = 0; i < 26; i++) { const y = y0 + hash(i + seed) * (y1 - y0), x = hash(i * 7 + seed) * W; s += `M${x.toFixed(0)},${y.toFixed(0)} L${(x + 120 + hash(i + 3) * 260).toFixed(0)},${y.toFixed(0)} `; }
+    E(id).innerHTML = `<path d="${s}" stroke="${color}" stroke-width="3.5" stroke-linecap="round"/>`;
+}
+
+/* ------------------------------------------------------------- scenes */
+// panel shapes, page coordinates (content band 150–1310)
+const P_FULL = [[40, 150], [1040, 150], [1040, 1310], [40, 1310]];
+const P_TOP = [[40, 150], [1040, 150], [1040, 640], [40, 720]];
+const P_BOT = [[40, 750], [1040, 670], [1040, 1310], [40, 1310]];
+const P_T3 = [[40, 150], [1040, 150], [1040, 500], [40, 540]];
+const P_M3 = [[40, 570], [1040, 530], [1040, 900], [40, 920]];
+const P_B3 = [[40, 950], [1040, 930], [1040, 1310], [40, 1310]];
+
+const S = {};
+const shakes = [];      // frames that kick the page
+
+S.s0 = {
+    svg: panel('s0-p', P_FULL, lines('s0-l') +
+        `<g id="s0-t1">${sfx('s0-t1i', 'ปัญหา', 230, OR, -8)}</g><g id="s0-t2">${sfx('s0-t2i', 'สินค้าค้าง', 150, '#fff', -6)}</g><g id="s0-t3">${sfx('s0-t3i', 'ไลน์ผลิต!!', 170, '#fff', -6)}</g>`, '#fff6ec'),
+    render(l, f) {
+        setLines('s0-l', f, 540, 730, 160, 200, 1200, 7, '#fff');
+        tf('s0-t1', 540, 520, pop(l, 2, 10) * (1 + Math.sin(l * .4) * .02));
+        tf('s0-t2', 540, 760, pop(l, 14, 10));
+        tf('s0-t3', 560, 980, pop(l, 26, 10));
+    }
+};
+
+S.s1 = {
+    svg: panel('s1-a', P_TOP, photo('s1-ph', 'conveyor-belt-factory.jpg', 40, 150, 1000, 580) + `<g id="s1-tg">${tag('s1-tgi', 'เครื่องจักรทันสมัย', 44)}</g>`) +
+         panel('s1-b', P_BOT, lines('s1-l') +
+            `<g transform="translate(540,1000)"><rect x="-400" y="-150" width="800" height="300" fill="#fff" stroke="${INK}" stroke-width="3.5"/>
+             <text font-family="Kanit" font-weight="900" font-size="64" text-anchor="middle" y="-60" fill="${INK}">เป้าหมาย</text>
+             <rect x="-340" y="0" width="680" height="70" fill="url(#tone)" stroke="${INK}" stroke-width="3.5"/>
+             <rect id="s1-bar" x="-340" y="0" width="0" height="70" fill="${OR}" stroke="${INK}" stroke-width="3.5"/>
+             <path d="M340,-20 L340,90" stroke="${INK}" stroke-width="3.5" stroke-dasharray="14 10"/></g>` +
+            `<g id="s1-no">${sfx('s1-noi', 'ไม่ทัน!!', 200, OR, -12)}</g>`, '#fff'),
+    render(l, f) {
+        const L = linesOf('s1'), b = sceneById('s1').from, l2 = L[1].from - b;
+        tf('s1-a', lerp(-1100, 0, outExpo(inv(l, 0, 14))), 0);
+        tf('s1-ph', 0, 0, 1);
+        at('s1-ph', 'transform', `translate(540,440) scale(${(1.15 - inv(l, 0, 300) * .1).toFixed(3)}) translate(-540,-440)`);
+        tf('s1-tg', 330, 620, pop(l, 16));
+        tf('s1-b', lerp(1100, 0, outExpo(inv(l, 10, 26))), 0);
+        at('s1-bar', 'width', (680 * .68 * inv(l, 30, l2)).toFixed(0));
+        const hit = l >= l2 + 8;
+        if (hit) setLines('s1-l', f, 540, 1000, 120, 330, 1000, 6, INK); else E('s1-l').innerHTML = '';
+        tf('s1-no', 560, 880, pop(l, l2 + 8, 8)); op('s1-no', l >= l2 + 8 ? 1 : 0);
+    },
+    shakes: () => { const L = linesOf('s1'); return [L[1].from + 8]; }
+};
+
+S.s2 = {
+    svg: panel('s2-a', P_T3, photo('s2-pa', 'conveyor-system.jpg', 40, 150, 1000, 400) + `<g id="s2-sa">${stamp('s2-sai', 'ไม่ใช่เครื่องจักร', 56)}</g>`) +
+         panel('s2-b', P_M3, photo('s2-pb', 'conveyor-belt-line.jpg', 40, 530, 1000, 400) + `<g id="s2-sb">${stamp('s2-sbi', 'ไม่ใช่คน', 64)}</g>`) +
+         panel('s2-c', P_B3, lines('s2-l') + `<g id="s2-t">${sfx('s2-ti', 'แต่คือ "ระบบ"!!', 120, '#fff', -6)}</g>`, `url(#toneO)`),
+    render(l, f) {
+        const L = linesOf('s2'), b = sceneById('s2').from, l2 = L[1].from - b;
+        tf('s2-a', lerp(1100, 0, outExpo(inv(l, 0, 14))), 0);
+        tf('s2-sa', 540, 360, pop(l, 26, 8) * 1, -10); op('s2-sa', l >= 26 ? 1 : 0);
+        tf('s2-b', lerp(-1100, 0, outExpo(inv(l, 30, 44))), 0);
+        tf('s2-sb', 540, 740, pop(l, 54, 8), 8); op('s2-sb', l >= 54 ? 1 : 0);
+        tf('s2-c', 0, lerp(1100, 0, outExpo(inv(l, l2, l2 + 12))));
+        setLines('s2-l', f, 540, 1130, 100, 160, 900, 6, INK);
+        tf('s2-t', 540, 1170, pop(l, l2 + 10, 8));
+    },
+    shakes: () => { const b = sceneById('s2').from, L = linesOf('s2'); return [b + 26, b + 54, L[1].from + 10]; }
+};
+
+// pile slots (vertical page): a heap at the head of the conveyor
+const PILE = [];
+{ const rows = [5, 5, 4, 4, 3, 3, 2, 2, 1, 1]; rows.forEach((n, r) => { for (let i = 0; i < n; i++) PILE.push([150 + (r % 2) * 50 + i * 104 + (hash(r * 9 + i) - .5) * 12, 1180 - r * 94, (hash(r * 5 + i) - .5) * 16]); }); }
+
+S.s3 = {
+    svg: panel('s3-p', P_FULL, lines('s3-l') + conveyor('s3-cv', 520) +
+        Array.from({ length: BOX_MAX }, (_, i) => box('s3-b' + i)).join('') + box('s3-ride') +
+        `<g id="s3-slow">${tag('s3-slowi', 'ลำเลียงไม่ทัน...', 48)}</g>` +
+        `<g id="s3-tun">${sfx('s3-tuni', 'ตึง!', 110, '#fff', -10)}</g><g id="s3-big">${sfx('s3-bigi', 'โครม!!', 210, OR, -12)}</g>`, '#fff'),
+    render(l, f) {
+        const sc = sceneById('s3'), L = linesOf('s3'), l2 = L[1].from - sc.from, l3 = L[2].from - sc.from;
+        tf('s3-p', 0, lerp(1300, 0, outExpo(inv(l, 0, 14))));
+        tf('s3-cv', 520, 1280); spinConveyor('s3-cv', f, 520, .15);
+        let lastLand = -99;
+        for (let k = 0; k < BOX_MAX; k++) {
+            const spawn = sc.from + BOX_DELAY + k * BOX_EVERY, slot = PILE[k] || PILE[PILE.length - 1];
+            if (f < spawn - 10) { tf('s3-b' + k, -500, 0, 0); continue; }
+            const t = inv(f, spawn - 10, spawn);
+            const x = lerp(-80, slot[0], t), y = lerp(500, slot[1], t) - Math.sin(t * Math.PI) * 220;
+            const land = f >= spawn ? 1 - inv(f, spawn, spawn + 6) : 0;
+            tf('s3-b' + k, x, y, 1 + land * .12, lerp(-160, slot[2], t));
+            if (f >= spawn) lastLand = Math.max(lastLand, spawn);
+        }
+        tf('s3-ride', 600 + ((l * 1.1) % 420), 1184, .9, 0);
+        tf('s3-slow', 780, 1050, pop(l, l2 + 6)); op('s3-slow', l >= l2 + 6 ? 1 : 0);
+        const sinceLand = f - lastLand;
+        tf('s3-tun', 820, 560 + hash(lastLand) * 200, sinceLand < 8 && l < l3 ? outBack(inv(sinceLand, 0, 6)) : 0, -10 + hash(lastLand) * 20);
+        const big = l >= l3 + 30;
+        if (big) setLines('s3-l', f, 400, 800, 140, 380, 1300, 7, INK); else E('s3-l').innerHTML = '';
+        tf('s3-big', 600, 470, pop(l, l3 + 30, 8)); op('s3-big', big ? 1 : 0);
+    },
+    shakes: () => { const L = linesOf('s3'); return [L[2].from + 30]; }
+};
+
+S.s3b = {
+    svg: panel('s3b-a', P_TOP, photo('s3b-ph', 'conveyor-company-chonburi.jpg', 40, 150, 1000, 580) + `<g id="s3b-st"></g>` +
+            [0, 1, 2].map(i => `<g id="s3b-w${i}">${sfx('s3b-wi' + i, ['ยก!', 'ขยับ!', 'จัด!'][i], 120, i === 1 ? OR : '#fff', -8)}</g>`).join('')) +
+         panel('s3b-b', P_BOT, lines('s3b-l') +
+            `<g id="s3b-stop"><path d="M-150,-62 L-62,-150 L62,-150 L150,-62 L150,62 L62,150 L-62,150 L-150,62 Z" fill="${OR}" stroke="${INK}" stroke-width="3.5"/>
+             <text font-family="Kanit" font-weight="900" font-size="96" text-anchor="middle" y="34" fill="#fff" stroke="${INK}" stroke-width="3.5" paint-order="stroke">หยุด!!</text></g>` +
+            `<g id="s3b-wait">${tag('s3b-waiti', 'รอให้สินค้าเคลื่อนออกไปก่อน...', 40)}</g>`, `url(#toneD)`),
+    render(l, f) {
+        const sc = sceneById('s3b'), L = linesOf('s3b'), l2 = L[1].from - sc.from, ln = L[0].to - L[0].from;
+        tf('s3b-a', lerp(-1100, 0, outExpo(inv(l, 0, 14))), 0);
+        at('s3b-ph', 'transform', `translate(540,440) scale(${(1.1 + Math.sin(l * .9) * .01).toFixed(3)}) translate(-540,-440)`);
+        setStreaks('s3b-st', f, 180, 700, '#fff');
+        for (let i = 0; i < 3; i++) { const t0 = 8 + i * ln / 3; tf('s3b-w' + i, 220 + i * 320, 440 + (i % 2) * 120, pop(l, t0, 8)); op('s3b-w' + i, l >= t0 ? 1 : 0); }
+        tf('s3b-b', lerp(1100, 0, outExpo(inv(l, l2 - 10, l2 + 4))), 0);
+        const stop = l >= l2 + 27;
+        if (stop) setLines('s3b-l', f, 540, 980, 120, 220, 900, 7, '#fff'); else E('s3b-l').innerHTML = '';
+        tf('s3b-stop', 540, 960, pop(l, l2 + 27, 8) * (1 + (stop ? Math.sin(l * .8) * .02 : 0)), stop ? Math.sin(l * .5) * 3 : 0); op('s3b-stop', stop ? 1 : 0);
+        tf('s3b-wait', 540, 1220, pop(l, l2 + 50)); op('s3b-wait', l >= l2 + 50 ? 1 : 0);
+    },
+    shakes: () => { const L = linesOf('s3b'); return [L[1].from + 27]; }
+};
+
+S.s4 = {
+    svg: [0, 1, 2].map(i => panel('s4-p' + i, [P_T3, P_M3, P_B3][i],
+            `<rect x="40" y="0" width="1000" height="1400" fill="${['#fff', 'url(#tone)', '#fff'][i]}"/>` +
+            `<g transform="translate(260,${[345, 725, 1120][i]})">${clock('s4-c' + i)}</g>` +
+            `<text font-family="Kanit" font-weight="900" font-style="italic" font-size="70" x="400" y="${[330, 710, 1105][i] + 20}" fill="${INK}">ขั้นตอนที่ ${i + 1}</text>` +
+            `<g id="s4-r${i}">${tag('s4-ri' + i, 'รอ...', 52, i === 1 ? OR : '#fff')}</g>`)).join('') +
+         `<g id="s4-tt">${sfx('s4-tti', 'ติ๊ก...ต็อก...', 96, '#fff', -6)}</g>` +
+         `<g id="s4-loss">${panel('s4-lp', [[120, 420], [960, 380], [960, 1040], [120, 1080]],
+            `<path d="M200,560 L380,640 L540,620 L700,820 L880,940" fill="none" stroke="${OR}" stroke-width="6" stroke-linejoin="round"/>
+             <path d="M880,940 L820,890 M880,940 L880,870" stroke="${OR}" stroke-width="6" stroke-linecap="round"/>
+             <text font-family="Kanit" font-weight="900" font-size="80" text-anchor="middle" x="540" y="520" fill="${INK}">เสียโอกาส</text>`, '#fff')}</g>`,
+    render(l, f) {
+        const sc = sceneById('s4'), L = linesOf('s4'), l3 = L[2].from - sc.from;
+        for (let i = 0; i < 3; i++) {
+            tf('s4-p' + i, lerp(i % 2 ? -1100 : 1100, 0, outExpo(inv(l, i * 8, i * 8 + 14))), 0);
+            at('s4-c' + i + '-h', 'transform', `rotate(${Math.floor(l / 15) * 30 + i * 40})`);
+            at('s4-c' + i + '-m', 'transform', `rotate(${l * 4})`);
+            const turn = Math.floor(l / 30) % 3 !== i;
+            tf('s4-r' + i, 760, [460, 840, 1230][i], turn ? pop(l, 20 + i * 6) : 0);
+        }
+        tf('s4-tt', 560, 1420 - 60, 0);
+        const lo = pop(l, l3 + 4, 12);
+        tf('s4-loss', 0, lerp(1600, 0, outExpo(inv(l, l3 + 4, l3 + 18))), 1); op('s4-loss', l >= l3 + 4 ? 1 : 0);
+    },
+    shakes: () => { const L = linesOf('s4'); return [L[2].from + 18]; }
+};
+
+S.s5 = {
+    svg: panel('s5-p', P_FULL,
+        `<rect x="40" y="150" width="1000" height="1160" fill="url(#grid)"/>` +
+        `<g id="s5-one" transform="translate(280,700)">${conveyor('s5-cv', 520)}</g>` +
+        `<g id="s5-q1">${sfx('s5-q1i', 'ยาวเท่าไร?', 90, '#fff', -6)}</g><g id="s5-q2">${sfx('s5-q2i', 'เร็วแค่ไหน?', 90, '#fff', 6)}</g>` +
+        `<g id="s5-x"><path d="M-260,-200 L260,200 M260,-200 L-260,200" stroke="${OR}" stroke-width="6" stroke-linecap="round"/></g>` +
+        `<g id="s5-map" transform="translate(540,420)">${flowMap('s5-mi', ['รับวัตถุดิบ', 'ผลิต', 'บรรจุ', 'จัดเก็บ', 'ส่งออก'])}</g>` +
+        `<g id="s5-over">${tag('s5-overi', 'ภาพรวมกระบวนการผลิต', 50, OR, '#fff')}</g>`, NAVY),
+    render(l, f) {
+        const sc = sceneById('s5'), L = linesOf('s5'), l2 = L[1].from - sc.from;
+        tf('s5-p', 0, 0, lerp(.6, 1, outBack(inv(l, 0, 14)))); at('s5-p', 'transform', `translate(540,730) scale(${lerp(.6, 1, outBack(inv(l, 0, 14))).toFixed(3)}) translate(-540,-730)`);
+        const ov = inv(l, l2, l2 + 18);
+        op('s5-one', 1 - ov); spinConveyor('s5-cv', f, 520, .6);
+        tf('s5-q1', 330, 460, pop(l, 40) * (1 - ov)); tf('s5-q2', 740, 1000, pop(l, 70) * (1 - ov));
+        tf('s5-x', 540, 730, pop(l, l2 - 24, 8) * (1 - ov)); op('s5-x', l >= l2 - 24 ? 1 - ov : 0);
+        at('s5-map', 'transform', `translate(540,420) scale(${outBack(ov).toFixed(3)})`); op('s5-map', ov);
+        tf('s5-over', 540, 1240, pop(l, l2 + 18)); op('s5-over', l >= l2 + 18 ? 1 : 0);
+    },
+    shakes: () => { const L = linesOf('s5'); return [L[1].from - 24]; }
+};
+
+const QS = [['ขนาด & น้ำหนัก', 'M-70,-60 L70,-60 L70,60 L-70,60 Z M-100,90 L100,90'], ['จากไหน → ไปไหน', 'M-90,0 L90,0 M60,-30 L90,0 L60,30'],
+            ['รองรับได้แค่ไหน', 'M-90,40 A90 90 0 0 1 90,40 M0,40 L50,-40'], ['ติดขัดตรงไหน', 'M-30,-30 m-50,0 a50 50 0 1 0 100 0 a50 50 0 1 0 -100 0 M10,10 L80,80']];
+S.s5b = {
+    svg: QS.map((q, i) => panel('s5b-p' + i, [[40, 150], [1040, 150], [1040, 1310], [40, 1310]].map(([x, y]) => [x === 40 ? (i % 2 ? 550 : 40) : (i % 2 ? 1040 : 530), y === 150 ? (i < 2 ? 150 : 740) : (i < 2 ? 720 : 1310)]),
+            `<g transform="translate(${i % 2 ? 795 : 285},${i < 2 ? 380 : 970})"><path d="${q[1]}" fill="none" stroke="${INK}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g>
+             <text font-family="Kanit" font-weight="900" font-size="46" text-anchor="middle" x="${i % 2 ? 795 : 285}" y="${i < 2 ? 620 : 1210}" fill="${INK}">${q[0]}</text>
+             <text font-family="Kanit" font-weight="900" font-style="italic" font-size="90" x="${i % 2 ? 600 : 90}" y="${i < 2 ? 250 : 840}" fill="${OR}" stroke="${INK}" stroke-width="3.5" paint-order="stroke">0${i + 1}</text>`,
+            '#fff')).join(''),
+    render(l) {
+        const sc = sceneById('s5b'), L = linesOf('s5b')[0], ls = L.from - sc.from, ld = L.to - L.from;
+        for (let i = 0; i < 4; i++) {
+            const st = ls + i * ld / 4, cx = i % 2 ? 795 : 285, cy = i < 2 ? 435 : 1025;
+            const s = outBack(inv(l, st, st + 10));
+            at('s5b-p' + i, 'transform', `translate(${cx},${cy}) scale(${s.toFixed(3)}) rotate(${((1 - s) * 12 * (i % 2 ? 1 : -1)).toFixed(2)}) translate(${-cx},${-cy})`);
+        }
+    },
+    shakes: () => { const L = linesOf('s5b')[0]; return [0, 1, 2, 3].map(i => Math.round(L.from + i * (L.to - L.from) / 4) + 6); }
+};
+
+S.s6 = {
+    svg: panel('s6-a', [[40, 150], [1040, 150], [1040, 460], [40, 520]], photo('s6-p0', 'roller-conveyor.jpg', 40, 150, 1000, 380)) +
+         panel('s6-b', [[40, 550], [1040, 490], [1040, 840], [40, 880]], photo('s6-p1', 'pvc-conveyor-belt-system.jpg', 40, 490, 1000, 400)) +
+         panel('s6-c', [[40, 910], [1040, 870], [1040, 1310], [40, 1310]], `<rect x="40" y="860" width="1000" height="460" fill="url(#toneO)"/><g id="s6-st"></g>` +
+            `<g transform="translate(60,1260)">${conveyor('s6-cv', 960)}</g>` + Array.from({ length: 6 }, (_, i) => box('s6-bx' + i)).join('') +
+            `<g id="s6-t">${sfx('s6-ti', 'ไหลลื่น ต่อเนื่อง!', 92, '#fff', -5)}</g>`),
+    render(l, f) {
+        tf('s6-a', lerp(1100, 0, outExpo(inv(l, 0, 12))), 0); tf('s6-b', lerp(-1100, 0, outExpo(inv(l, 8, 20))), 0); tf('s6-c', lerp(1100, 0, outExpo(inv(l, 16, 28))), 0);
+        at('s6-p0', 'transform', `translate(${(-l * .5).toFixed(1)},0) scale(1.08)`);
+        at('s6-p1', 'transform', `translate(${(-60 + l * .5).toFixed(1)},0) scale(1.08)`);
+        spinConveyor('s6-cv', f, 960, 1.4);
+        for (let i = 0; i < 6; i++) tf('s6-bx' + i, ((l * 9 + i * 200) % 1200) - 60, 1166, .9);
+        setStreaks('s6-st', f, 1060, 1200, INK);
+        tf('s6-t', 540, 1020, pop(l, 34, 10));
+    },
+    shakes: () => [sceneById('s6').from + 34]
+};
+
+S.s7 = {
+    svg: ['+ พนักงาน', '+ เครื่องจักร', 'เร่งความเร็ว'].map((t, i) => panel('s7-o' + i, [P_T3, P_M3, P_B3][i],
+            `<rect x="40" y="0" width="1000" height="1400" fill="${i === 1 ? 'url(#tone)' : '#fff'}"/>
+             <text font-family="Kanit" font-weight="900" font-style="italic" font-size="110" text-anchor="middle" x="540" y="${[370, 760, 1150][i]}" fill="${INK}" stroke="#fff" stroke-width="3.5" paint-order="stroke">${t}</text>
+             <g id="s7-z${i}" transform="translate(800,${[260, 650, 1040][i]}) rotate(-12)">${stamp('s7-zi' + i, 'รอก่อน!', 60, OR)}</g>`)).join('') +
+         `<g id="s7-scan">${panel('s7-sp', P_FULL, `<rect x="40" y="150" width="1000" height="1160" fill="url(#grid)"/>
+            <g transform="translate(540,330)">${flowMap('s7-mi', ['ขั้นที่ 1', 'ขั้นที่ 2', 'ขั้นที่ 3', 'ขั้นที่ 4', 'ขั้นที่ 5'])}</g>
+            <g id="s7-knot"><circle cx="540" cy="705" r="48" fill="${OR}" stroke="${INK}" stroke-width="3.5"/><text font-family="Kanit" font-weight="900" font-size="66" text-anchor="middle" x="540" y="728" fill="#fff">!</text></g>
+            <g id="s7-mag"><circle r="150" fill="#fff" fill-opacity=".15" stroke="#fff" stroke-width="6"/><circle r="150" fill="none" stroke="${INK}" stroke-width="3.5"/><path d="M106,106 L240,240" stroke="#fff" stroke-width="40" stroke-linecap="round"/><path d="M106,106 L240,240" stroke="${INK}" stroke-width="6" stroke-linecap="round"/></g>
+            <g id="s7-find">${sfx('s7-findi', 'เจอแล้ว!!', 130, OR, -8)}</g>`, NAVY)}</g>`,
+    render(l, f) {
+        const sc = sceneById('s7'), L = linesOf('s7'), l1 = L[0].to - sc.from, l2 = L[1].from - sc.from;
+        for (let i = 0; i < 3; i++) {
+            const st = 6 + i * (l1 - 30) / 3;
+            tf('s7-o' + i, lerp(i % 2 ? -1100 : 1100, 0, outExpo(inv(l, st, st + 12))), 0);
+            at('s7-z' + i, 'opacity', l >= l1 - 10 + i * 5 ? 1 : 0);
+        }
+        tf('s7-scan', 0, lerp(1800, 0, outExpo(inv(l, l2, l2 + 14))));
+        const t = inOut(inv(l, l2 + 20, l2 + 100));
+        tf('s7-mag', 540 + Math.sin(t * 6) * 120 * (1 - t), lerp(330, 705, t));
+        const found = t >= 1;
+        op('s7-knot', found ? 1 : 0);
+        tf('s7-find', 560, 1050, found ? pop(l, l2 + 100, 8) : 0);
+    },
+    shakes: () => { const sc = sceneById('s7'), L = linesOf('s7'); return [L[0].to - 10, L[1].from + 100]; }
+};
+
+const PIECE = 'M-150,-150 L-30,-150 a30 30 0 1 1 60 0 L150,-150 L150,-30 a30 30 0 1 1 0 60 L150,150 L-150,150 Z';
+S.s7b = {
+    svg: panel('s7b-a', P_TOP, photo('s7b-p1', 'conveyor-installation-service.jpg', 40, 150, 1000, 580) +
+            `<g id="s7b-s1">${stamp('s7b-s1i', 'คน ✓', 76, '#2ecc71')}</g><g id="s7b-s2">${stamp('s7b-s2i', 'เครื่องจักร ✓', 76, '#2ecc71')}</g>`) +
+         panel('s7b-b', P_BOT, lines('s7b-l') + [0, 1, 2].map(i => `<g id="s7b-z${i}"><path d="${PIECE}" fill="${[OR, '#fff', 'url(#tone)'][i]}" stroke="${INK}" stroke-width="3.5"/>
+            <text font-family="Kanit" font-weight="900" font-size="54" text-anchor="middle" y="18" fill="${INK}" stroke="#fff" stroke-width="3.5" paint-order="stroke">${['คน', 'เครื่องจักร', 'ลำเลียง'][i]}</text></g>`).join('') +
+            `<g id="s7b-ok">${sfx('s7b-oki', 'ลงตัว!!', 170, OR, -8)}</g>`, `url(#toneD)`),
+    render(l, f) {
+        const sc = sceneById('s7b'), L = linesOf('s7b'), l2 = L[1].from - sc.from;
+        tf('s7b-a', lerp(-1100, 0, outExpo(inv(l, 0, 14))), 0);
+        tf('s7b-s1', 330, 330, pop(l, 24, 8), -10); op('s7b-s1', l >= 24 ? 1 : 0);
+        tf('s7b-s2', 680, 560, pop(l, 44, 8), 8); op('s7b-s2', l >= 44 ? 1 : 0);
+        tf('s7b-b', lerp(1100, 0, outExpo(inv(l, l2 - 8, l2 + 6))), 0);
+        const fit = outBack(inv(l, l2 + 40, l2 + 60));
+        for (let i = 0; i < 3; i++) {
+            const loose = (i - 1) * 330, wob = (1 - fit) * Math.sin(l * .5 + i * 2) * 20;
+            at('s7b-z' + i, 'transform', `translate(${(540 + lerp(loose, (i - 1) * 300, fit)).toFixed(1)},${(1000 + wob).toFixed(1)}) rotate(${((1 - fit) * (i - 1) * 16).toFixed(2)}) scale(${(.9 * outBack(inv(l, l2 + 6 + i * 5, l2 + 16 + i * 5))).toFixed(3)})`);
+        }
+        const done = l >= l2 + 62;
+        if (done) setLines('s7b-l', f, 540, 1000, 120, 330, 1000, 6, '#fff'); else E('s7b-l').innerHTML = '';
+        tf('s7b-ok', 560, 1240, done ? pop(l, l2 + 62, 8) : 0);
+    },
+    shakes: () => { const sc = sceneById('s7b'), L = linesOf('s7b'); return [sc.from + 24, sc.from + 44, L[1].from + 62]; }
+};
+
+S.s8 = {
+    svg: panel('s8-g', P_FULL, `<rect x="40" y="150" width="1000" height="1160" fill="url(#toneN)"/>` + lines('s8-l') +
+            gear('s8-g0', 150, 12, 'คน', '#fff') + gear('s8-g1', 112, 9, 'เครื่องจักร', OR) + gear('s8-g2', 150, 12, 'ลำเลียง', '#fff') +
+            `<g id="s8-t">${sfx('s8-ti', 'ทำงานร่วมกัน!!', 110, '#fff', -6)}</g>`, NAVY) +
+         `<g id="s8-mont">${[['conveyor-belt-line.jpg', P_T3], ['roller-conveyor-system.jpg', P_M3], ['pvc-belt-conveyor.jpg', P_B3]].map(([img, pts], i) =>
+            panel('s8-m' + i, pts, photo('s8-mp' + i, img, 40, [150, 530, 930][i], 1000, 400))).join('')}
+            <g id="s8-fin">${sfx('s8-fini', 'ระบบดี = งานลื่น!', 100, OR, -6)}</g></g>`,
+    render(l, f) {
+        const sc = sceneById('s8'), L = linesOf('s8'), l2 = L[1].from - sc.from, l3 = L[2].from - sc.from;
+        at('s8-g', 'transform', `translate(540,730) scale(${lerp(.5, 1, outBack(inv(l, 0, 14))).toFixed(3)}) translate(-540,-730)`);
+        const smooth = l >= l2;
+        const a = smooth ? (l - l2) * 3 : Math.floor(l / 12) * 6, j = smooth ? 0 : Math.sin(l * 2.5) * 3;
+        tf('s8-g0', 300, 640); at('s8-g0-rot', 'transform', `rotate(${a + j})`);
+        tf('s8-g1', 540, 870); at('s8-g1-rot', 'transform', `rotate(${-a * 150 / 112 + 10 - j})`);
+        tf('s8-g2', 780, 640); at('s8-g2-rot', 'transform', `rotate(${a + 15 + j})`);
+        if (smooth) setLines('s8-l', f, 540, 740, 110, 420, 1100, 6, '#fff'); else E('s8-l').innerHTML = '';
+        tf('s8-t', 540, 1180, smooth ? pop(l, l2 + 8, 10) : 0);
+        for (let i = 0; i < 3; i++) tf('s8-m' + i, lerp(i % 2 ? -1100 : 1100, 0, outExpo(inv(l, l3 + i * 8, l3 + 12 + i * 8))), 0);
+        op('s8-mont', l >= l3 ? 1 : 0);
+        tf('s8-fin', 540, 760, pop(l, l3 + 34, 10));
+    },
+    shakes: () => { const L = linesOf('s8'); return [L[1].from + 8, L[2].from + 34]; }
+};
+
+S.s9 = {
+    svg: panel('s9-a', [[40, 150], [1040, 150], [1040, 620], [40, 680]], photo('s9-ph', 'chain-conveyor-system.jpg', 40, 150, 1000, 540)) +
+         panel('s9-b', [[40, 710], [1040, 650], [1040, 1310], [40, 1310]],
+            `<image href="../../logo.png" x="440" y="700" width="200" height="200"/>
+             <text font-family="Kanit" font-weight="900" font-style="italic" font-size="84" text-anchor="middle" x="540" y="1000" fill="${INK}">BSS <tspan fill="${OR}">SOLUTION</tspan></text>
+             <text font-family="Kanit" font-weight="800" font-size="52" text-anchor="middle" x="540" y="1062" fill="${INK}">(1978)</text>
+             ${[['TEL', '02-317-5470-3'], ['MAIL', 'sale.bss1978@gmail.com'], ['LINE', 'bss_1978']].map(([k, v], i) =>
+                `<g id="s9-r${i}"><rect x="100" y="${1095 + i * 70}" width="120" height="56" fill="${OR}" stroke="${INK}" stroke-width="3.5"/>
+                 <text font-family="Kanit" font-weight="900" font-size="32" text-anchor="middle" x="160" y="${1134 + i * 70}" fill="#fff">${k}</text>
+                 <text font-family="Kanit" font-weight="800" font-size="44" x="245" y="${1138 + i * 70}" fill="${INK}">${v}</text></g>`).join('')}`, '#fff'),
+    render(l) {
+        tf('s9-a', lerp(-1100, 0, outExpo(inv(l, 0, 14))), 0);
+        at('s9-ph', 'transform', `translate(540,420) scale(${(1.12 - inv(l, 0, 260) * .08).toFixed(3)}) translate(-540,-420)`);
+        tf('s9-b', lerp(1100, 0, outExpo(inv(l, 8, 22))), 0);
+        for (let i = 0; i < 3; i++) { op('s9-r' + i, inv(l, 24 + i * 6, 30 + i * 6)); }
+    },
+    shakes: () => []
+};
+
+/* ------------------------------------------------------- page level */
+function captions(f) {
+    const i = lineAt(f), el = E('capText'), box = E('cap');
+    if (i < 0 || f > TL.lines[i].to + 6) { box.style.opacity = 0; return; }
+    const ln = TL.lines[i];
+    const words = ln.text.split(' '), chunks = [];
+    let cur = '';
+    for (const w of words) { if ((cur + ' ' + w).trim().length > 30 && cur) { chunks.push(cur.trim()); cur = w; } else cur += ' ' + w; }
+    if (cur.trim()) chunks.push(cur.trim());
+    const total = chunks.reduce((a, c) => a + c.length, 0), p = inv(f, ln.from, ln.to) * total;
+    let acc = 0, k = 0;
+    for (; k < chunks.length - 1; k++) { acc += chunks[k].length; if (p < acc) break; }
+    el.textContent = chunks[k];
+    box.style.opacity = 1;
+    // a small kick each time the caption changes, like a panel being turned
+    const chunkStart = ln.from + (k ? chunks.slice(0, k).reduce((a, c) => a + c.length, 0) / total * (ln.to - ln.from) : 0);
+    const d = f - chunkStart;
+    box.style.transform = `rotate(${(-1 + (i % 2) * 2) * 1.2}deg) scale(${(1 + Math.exp(-Math.max(0, d) / 3) * .06).toFixed(3)})`;
+}
+
+let SHAKES = [];
+function pageShake(f) {
+    let s = 0;
+    for (const k of SHAKES) { const d = f - k; if (d >= 0 && d < 12) s = Math.max(s, Math.cos(d / 12 * Math.PI * 2.5) * Math.exp(-d / 3.5) * 16); }
+    at('page', 'transform', `translate(0,${s.toFixed(1)})`);
+}
+
+function wipe(f) {
+    let html = '';
+    for (const s of TL.scenes.slice(1)) {
+        const d = f - s.from;
+        if (d < -12 || d > 12) continue;
+        // down over 12 frames to fully closed on the cut, then up over 12;
+        // the same rail motion as the panels, so it stops with a clunk
+        const closed = d <= 0 ? outExpo(inv(d, -12, 0)) : 1 - outExpo(inv(d, 0, 12));
+        const bottom = closed * 1920;
+        let slats = '';
+        for (let y = bottom - 46; y > -46; y -= 46) slats += `M0,${y.toFixed(0)} L1080,${y.toFixed(0)} M0,${(y + 10).toFixed(0)} L1080,${(y + 10).toFixed(0)} `;
+        html += `<rect x="0" y="0" width="1080" height="${bottom.toFixed(0)}" fill="#e3e8ef"/>
+          <path d="${slats}" stroke="#b8c2cf" stroke-width="3"/>
+          <rect x="0" y="${(bottom - 70).toFixed(0)}" width="1080" height="70" fill="url(#hazard)" stroke="${INK}" stroke-width="4"/>
+          <rect x="470" y="${(bottom - 52).toFixed(0)}" width="140" height="34" rx="17" fill="#fff" stroke="${INK}" stroke-width="4"/>`;
+    }
+    E('fx').innerHTML = html;
+}
+
+// HUD: a conveyor progress bar under the top safe margin, and two gears at
+// the foot of the frame that spin harder whenever something is moving.
+// below the caption box, above TikTok's caption/account area
+const HUD_Y = 1540;
+function hud(f) {
+    const p = f / (TOTAL - 1);
+    let rollers = '';
+    for (let i = 0; i < 9; i++) rollers += `<g transform="translate(${80 + i * 115},${HUD_Y}) rotate(${(f * 9) % 360})"><circle r="11" fill="#fff" stroke="${INK}" stroke-width="3"/><path d="M-7,0 L7,0" stroke="${INK}" stroke-width="3"/></g>`;
+    const bx = 70 + p * 940;
+    // motion = any panel slide or shutter in the last few frames
+    let busy = 0;
+    for (const s of TL.scenes.slice(1)) if (Math.abs(f - s.from) < 16) busy = 1;
+    for (const k of SHAKES) if (f - k >= 0 && f - k < 10) busy = Math.max(busy, .7);
+    GEAR_A += 1.2 + busy * 9;
+    E('hud').innerHTML = `
+      <rect x="60" y="${HUD_Y - 16}" width="960" height="32" rx="16" fill="#eef1f6" stroke="${INK}" stroke-width="3"/>${rollers}
+      <g transform="translate(${bx.toFixed(1)},${HUD_Y - 18})"><rect x="-26" y="-40" width="52" height="40" fill="#ffc08a" stroke="${INK}" stroke-width="3"/><rect x="-5" y="-40" width="10" height="14" fill="${OR}"/></g>
+      <g transform="translate(150,1780) rotate(${GEAR_A.toFixed(1)})">${gearPath(120, 12)}</g>
+      <g transform="translate(330,1720) rotate(${(-GEAR_A * 120 / 80 + 9).toFixed(1)})">${gearPath(80, 8)}</g>
+      <g transform="translate(940,1790) rotate(${(-GEAR_A * .8).toFixed(1)})">${gearPath(100, 10)}</g>`;
+}
+let GEAR_A = 0;
+function gearPath(r, teeth) {
+    let d = '';
+    for (let i = 0; i < teeth * 2; i++) {
+        const a0 = i / (teeth * 2) * Math.PI * 2, a1 = (i + 1) / (teeth * 2) * Math.PI * 2, rr = i % 2 ? r : r + 20;
+        d += (i ? 'L' : 'M') + (Math.cos(a0) * rr).toFixed(1) + ',' + (Math.sin(a0) * rr).toFixed(1) + ' L' + (Math.cos(a1) * rr).toFixed(1) + ',' + (Math.sin(a1) * rr).toFixed(1) + ' ';
+    }
+    return `<path d="${d}Z" fill="#f3f5f9" stroke="#c4cdd9" stroke-width="4"/><circle r="${r * .35}" fill="#fbfaf7" stroke="#c4cdd9" stroke-width="4"/>`;
+}
+
+function build() {
+    E('page').innerHTML = Object.entries(S).map(([id, s]) => `<g id="${id}" display="none">${s.svg}</g>`).join('');
+    SHAKES = Object.values(S).flatMap(s => s.shakes ? s.shakes() : []).concat(TL.scenes.slice(1).map(s => s.from));
+}
+
+let last = null, LAST_F = -1;
+// same busy test as hud(), used to rebuild the gear angle after a seek
+function gearBusy(f) {
+    let b = 0;
+    for (const s of TL.scenes.slice(1)) if (Math.abs(f - s.from) < 16) b = 1;
+    for (const k of SHAKES) if (f - k >= 0 && f - k < 10) b = Math.max(b, .7);
+    return b;
+}
+function render(f) {
+    f = clamp(f, 0, TOTAL - 1);
+    const sc = TL.scenes.find(s => f >= s.from && f < s.to) || TL.scenes[TL.scenes.length - 1];
+    if (sc.id !== last) { Object.keys(S).forEach(id => at(id, 'display', id === sc.id ? 'inline' : 'none')); last = sc.id; }
+    S[sc.id].render(f - sc.from, f, sc.to - sc.from);
+    pageShake(f);
+    if (f < LAST_F || f - LAST_F > 1) { GEAR_A = 0; for (let g = 0; g < f; g++) GEAR_A += 1.2 + gearBusy(g) * 9; }
+    LAST_F = f;
+    wipe(f);
+    hud(f);
+    captions(f);
+}
+
+build();
+render(0);
+window.__FPS = FPS; window.__TOTAL = TOTAL; window.__seek = render; window.__ready = true;
+})();
+</script>
+</body>
+</html>

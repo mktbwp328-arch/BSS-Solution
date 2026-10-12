@@ -78,3 +78,6 @@ video/manga/concept.png
 video/sumi/*.mp4
 video/sumi/*.log
 video/sumi/preview/
+video/lineart/*.mp4
+video/lineart/*.log
+video/lineart/preview/
