@@ -502,18 +502,18 @@ S.s8 = {
 S.s9 = {
     svg: panel('s9-a', [[40, 150], [1040, 150], [1040, 620], [40, 680]], photo('s9-ph', 'chain-conveyor-system.jpg', 40, 150, 1000, 540)) +
          panel('s9-b', [[40, 710], [1040, 650], [1040, 1310], [40, 1310]],
-            `<image href="../../logo.png" x="440" y="700" width="200" height="200"/>
-             <text font-family="Kanit" font-weight="900" font-style="italic" font-size="84" text-anchor="middle" x="540" y="1000" fill="${INK}">BSS <tspan fill="${OR}">SOLUTION</tspan></text>
-             <text font-family="Kanit" font-weight="800" font-size="52" text-anchor="middle" x="540" y="1062" fill="${INK}">(1978)</text>
-             ${[['TEL', '02-317-5470-3'], ['MAIL', 'sale.bss1978@gmail.com'], ['LINE', 'bss_1978']].map(([k, v], i) =>
-                `<g id="s9-r${i}"><rect x="100" y="${1095 + i * 70}" width="120" height="56" fill="${OR}" stroke="${INK}" stroke-width="3.5"/>
-                 <text font-family="Kanit" font-weight="900" font-size="32" text-anchor="middle" x="160" y="${1134 + i * 70}" fill="#fff">${k}</text>
-                 <text font-family="Kanit" font-weight="800" font-size="44" x="245" y="${1138 + i * 70}" fill="${INK}">${v}</text></g>`).join('')}`, '#fff'),
+            `<image href="../../logo.png" x="455" y="690" width="170" height="170"/>
+             <text font-family="Kanit" font-weight="900" font-style="italic" font-size="80" text-anchor="middle" x="540" y="948" fill="${INK}">BSS <tspan fill="${OR}">SOLUTION</tspan></text>
+             <text font-family="Kanit" font-weight="800" font-size="46" text-anchor="middle" x="540" y="1004" fill="${INK}">(1978)</text>
+             ${[['TEL', '02-317-5470-3'], ['MOBILE', '086-822-8787, 094-846-8667'], ['MAIL', 'sale.bss1978@gmail.com'], ['LINE', 'bss_1978']].map(([k, v], i) =>
+                `<g id="s9-r${i}"><rect x="90" y="${1030 + i * 66}" width="130" height="52" fill="${OR}" stroke="${INK}" stroke-width="3.5"/>
+                 <text font-family="Kanit" font-weight="900" font-size="${k.length > 4 ? 23 : 28}" text-anchor="middle" x="155" y="${1066 + i * 66}" fill="#fff">${k}</text>
+                 <text font-family="Kanit" font-weight="800" font-size="40" x="240" y="${1069 + i * 66}" fill="${INK}">${v}</text></g>`).join('')}`, '#fff'),
     render(l) {
         tf('s9-a', lerp(-1100, 0, outExpo(inv(l, 0, 14))), 0);
         at('s9-ph', 'transform', `translate(540,420) scale(${(1.12 - inv(l, 0, 260) * .08).toFixed(3)}) translate(-540,-420)`);
         tf('s9-b', lerp(1100, 0, outExpo(inv(l, 8, 22))), 0);
-        for (let i = 0; i < 3; i++) { op('s9-r' + i, inv(l, 24 + i * 6, 30 + i * 6)); }
+        for (let i = 0; i < 4; i++) { op('s9-r' + i, inv(l, 24 + i * 6, 30 + i * 6)); }
     },
     shakes: () => []
 };
@@ -567,6 +567,8 @@ function captions(f) {
     const key = i + ':' + k;
     if (key !== CAP.key) { const h = highlight(chunks[k]); el.innerHTML = h.html; CAP = { key, start, hot: h.hot }; }
     box.style.opacity = 1;
+    const endCard = f >= TL.scenes[TL.scenes.length - 1].from;
+    box.style.top = endCard ? '520px' : '1150px';
     // each chunk punches in: big, then settles
     const d = Math.max(0, f - start);
     const sc = d < 6 ? 1.28 - .28 * (1 - Math.pow(1 - d / 6, 3)) : 1;
