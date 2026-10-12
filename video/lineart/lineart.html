@@ -19,14 +19,19 @@
 html, body { width: 1080px; height: 1920px; overflow: hidden; background: #fbfaf7; }
 #svg { position: absolute; inset: 0; }
 #cap {
-    position: absolute; left: 360px; right: 140px; top: 1330px;
+    position: absolute; left: 90px; right: 150px; top: 1010px;
     background: #fff; border: 3.5px solid #2a2a33; border-radius: 28px; box-shadow: 0 10px 0 #ffd2a8;
     padding: 18px 28px 22px; font-family: 'Sarabun', sans-serif; font-weight: 700;
     font-size: 42px; line-height: 1.3; color: #2a2a33; text-align: center;
 }
+/* bubble tail pointing down at the mascot */
+#cap::after { content: ""; position: absolute; left: 50%; margin-left: -60px; bottom: -34px; width: 0; height: 0;
+    border-left: 22px solid transparent; border-right: 22px solid transparent; border-top: 34px solid #2a2a33; }
+#cap::before { content: ""; position: absolute; left: 50%; margin-left: -56px; bottom: -27px; width: 0; height: 0; z-index: 1;
+    border-left: 18px solid transparent; border-right: 18px solid transparent; border-top: 29px solid #fff; }
 </style>
 <script src="../cartoon/timeline.js"></script>
-<script src="avatar.js"></script>
+<script src="mascot.js"></script>
 </head>
 <body>
 <svg id="svg" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
@@ -69,7 +74,8 @@ html, body { width: 1080px; height: 1920px; overflow: hidden; background: #fbfaf
 <g id="hud"></g>
 <g id="fx"></g>
 <!-- narrator: on top of everything, including the shutter -->
-<g id="avatarWrap" transform="translate(4,1086) scale(.92)" filter="url(#sticker)"></g>
+<!-- 400px tall, centred, standing on the progress conveyor -->
+<g id="avatarWrap" transform="translate(407,1146) scale(.2604)"></g>
 </svg>
 <div id="cap"><span id="capText"></span></div>
 
@@ -373,7 +379,7 @@ S.s5 = {
         tf('s5-q1', 330, 460, pop(l, 40) * (1 - ov)); tf('s5-q2', 740, 1000, pop(l, 70) * (1 - ov));
         tf('s5-x', 540, 730, pop(l, l2 - 24, 8) * (1 - ov)); op('s5-x', l >= l2 - 24 ? 1 - ov : 0);
         at('s5-map', 'transform', `translate(540,420) scale(${outBack(ov).toFixed(3)})`); op('s5-map', ov);
-        tf('s5-over', 660, 1240, pop(l, l2 + 18) * .82); op('s5-over', l >= l2 + 18 ? 1 : 0);
+        tf('s5-over', 540, 1240, pop(l, l2 + 18)); op('s5-over', l >= l2 + 18 ? 1 : 0);
     },
     shakes: () => { const L = linesOf('s5'); return [L[1].from - 24]; }
 };
@@ -498,9 +504,9 @@ S.s9 = {
              <text font-family="Kanit" font-weight="900" font-style="italic" font-size="84" text-anchor="middle" x="540" y="1000" fill="${INK}">BSS <tspan fill="${OR}">SOLUTION</tspan></text>
              <text font-family="Kanit" font-weight="800" font-size="52" text-anchor="middle" x="540" y="1062" fill="${INK}">(1978)</text>
              ${[['TEL', '02-317-5470-3'], ['MAIL', 'sale.bss1978@gmail.com'], ['LINE', 'bss_1978']].map(([k, v], i) =>
-                `<g id="s9-r${i}"><rect x="385" y="${1095 + i * 70}" width="110" height="56" fill="${OR}" stroke="${INK}" stroke-width="3.5"/>
-                 <text font-family="Kanit" font-weight="900" font-size="32" text-anchor="middle" x="440" y="${1134 + i * 70}" fill="#fff">${k}</text>
-                 <text font-family="Kanit" font-weight="800" font-size="36" x="510" y="${1136 + i * 70}" fill="${INK}">${v}</text></g>`).join('')}`, '#fff'),
+                `<g id="s9-r${i}"><rect x="100" y="${1095 + i * 70}" width="120" height="56" fill="${OR}" stroke="${INK}" stroke-width="3.5"/>
+                 <text font-family="Kanit" font-weight="900" font-size="32" text-anchor="middle" x="160" y="${1134 + i * 70}" fill="#fff">${k}</text>
+                 <text font-family="Kanit" font-weight="800" font-size="44" x="245" y="${1138 + i * 70}" fill="${INK}">${v}</text></g>`).join('')}`, '#fff'),
     render(l) {
         tf('s9-a', lerp(-1100, 0, outExpo(inv(l, 0, 14))), 0);
         at('s9-ph', 'transform', `translate(540,420) scale(${(1.12 - inv(l, 0, 260) * .08).toFixed(3)}) translate(-540,-420)`);
@@ -534,7 +540,8 @@ let SHAKES = [];
 function pageShake(f) {
     let s = 0;
     for (const k of SHAKES) { const d = f - k; if (d >= 0 && d < 12) s = Math.max(s, Math.cos(d / 12 * Math.PI * 2.5) * Math.exp(-d / 3.5) * 16); }
-    at('page', 'transform', `translate(0,${s.toFixed(1)})`);
+    // content scaled to 74% and anchored at the top: the lower third belongs to the narrator
+    at('page', 'transform', `translate(0,${s.toFixed(1)}) translate(540,150) scale(.74) translate(-540,-150)`);
 }
 
 function wipe(f) {
@@ -559,7 +566,7 @@ function wipe(f) {
 // HUD: a conveyor progress bar under the top safe margin, and two gears at
 // the foot of the frame that spin harder whenever something is moving.
 // below the caption box, above TikTok's caption/account area
-const HUD_Y = 1540;
+const HUD_Y = 1552;
 function hud(f) {
     const p = f / (TOTAL - 1);
     let rollers = '';
@@ -588,7 +595,7 @@ function gearPath(r, teeth) {
 }
 
 function build() {
-    E('avatarWrap').innerHTML = window.AVATAR.svg;
+    E('avatarWrap').innerHTML = window.MASCOT.svg;
     E('page').innerHTML = Object.entries(S).map(([id, s]) => `<g id="${id}" display="none">${s.svg}</g>`).join('');
     SHAKES = Object.values(S).flatMap(s => s.shakes ? s.shakes() : []).concat(TL.scenes.slice(1).map(s => s.from));
 }
@@ -603,8 +610,10 @@ function narrator(f, id) {
     const L = linesOf(id);
     if (id === 's1' && L.length && f >= L[L.length - 1].from) mood = 'worried';     // "...ยังผลิตไม่ทัน"
     if (id === 's7b' && L.length > 1 && f >= L[1].from + 40) mood = 'happy';      // pieces lock together
-    window.AVATAR.pose(f, { talk: TL.mouth[f] || 0, mood, look: mood === 'think' ? .3 : .8,
-        lookY: mood === 'think' ? -.8 : -.2, enter: outExpo(inv(f, 6, 30)) });
+    let hop = 0;
+    for (const k of SHAKES) { const d = f - k; if (d >= 0 && d < 12) hop = Math.max(hop, Math.sin(d / 12 * Math.PI)); }
+    window.MASCOT.pose(f, { talk: TL.mouth[f] || 0, hop: hop * .5, bounce: mood === 'happy' ? 1 : 0,
+        enter: outExpo(inv(f, 6, 30)) });
 }
 // same busy test as hud(), used to rebuild the gear angle after a seek
 function gearBusy(f) {
