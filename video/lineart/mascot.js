@@ -17,8 +17,10 @@
 const VISOR = '#f5f6f8', INK = '#071b45', TONGUE = '#fc8000';
 const IMG = 'mascot2.webp';
 
-const ARM_L = '232,600 322,600 320,790 305,880 296,960 290,1170 100,1170 100,880 150,760 200,640';
-const ARM_R = '792,600 702,600 704,790 719,880 728,960 734,1170 924,1170 924,880 874,760 824,640';
+// Cut lines follow the measured gap between fingertips and thigh, row by row;
+// a straight cut clipped a sliver of the leg outline into the arm layer.
+const ARM_L = '232,600 322,600 320,790 305,880 296,960 298,1060 300,1110 262,1140 240,1162 100,1162 100,880 150,760 200,640';
+const ARM_R = '792,600 702,600 704,790 719,880 728,960 726,1060 724,1110 762,1140 784,1162 924,1162 924,880 874,760 824,640';
 const PIV_L = [275, 680], PIV_R = [749, 680];
 
 const svg = `
@@ -72,10 +74,13 @@ function pose(f, o) {
     const ph = f % 112, dbl = Math.floor(f / 112) % 3 === 2 && ph > 7 && ph < 10;
     at('ms-blink', 'opacity', ph < 3 || dbl ? 1 : 0);
 
-    // arms: left swings outward with a negative angle, right with a positive one
+    // arms: SVG rotation is clockwise-positive with y down, so a hand hanging
+    // below the shoulder swings OUTWARD with a positive angle on the left arm
+    // and a negative one on the right. (The signs were the other way round and
+    // tucked the arms in behind the body.)
     const idle = Math.sin(f * .07) * 2.5;
-    at('ms-armL', 'transform', `rotate(${(-armL + idle).toFixed(2)} ${PIV_L[0]} ${PIV_L[1]})`);
-    at('ms-armR', 'transform', `rotate(${(armR - idle).toFixed(2)} ${PIV_R[0]} ${PIV_R[1]})`);
+    at('ms-armL', 'transform', `rotate(${(armL + idle).toFixed(2)} ${PIV_L[0]} ${PIV_L[1]})`);
+    at('ms-armR', 'transform', `rotate(${(-armR - idle).toFixed(2)} ${PIV_R[0]} ${PIV_R[1]})`);
 
     const sway = Math.sin(f * .04) * 1.4 + talk * Math.sin(f * .3) * 1.1 + dance * Math.sin(f * .28) * 3;
     const breathe = 1 + Math.sin(f * .06) * .012;

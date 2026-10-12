@@ -61,7 +61,7 @@ async function preview(frames) {
 
 async function full() {
     if (!fs.existsSync(AUDIO)) throw new Error('missing ' + AUDIO + ' — run video/cartoon/build-audio.js');
-    const { browser, page, total, fps } = await open();
+    let { browser, page, total, fps } = await open();
     const enc = spawn(ffmpeg, ['-y', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-', '-i', AUDIO,
         '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-preset', 'medium', '-crf', '19', '-pix_fmt', 'yuv420p',
         // -1.5 dB keeps the AAC true peak under 0 dBFS
@@ -72,7 +72,23 @@ async function full() {
     const done = new Promise((res, rej) => enc.on('close', c => c === 0 ? res() : rej(new Error('ffmpeg ' + c + '\n' + err))));
     const t0 = Date.now();
     for (let f = 0; f < total; f++) {
-        const jpg = await grab(page, f, 'jpeg');
+        // Chrome's memory climbs with every frame of DOM churn and fell over
+        // around frame 1,500. A fresh browser every 600 frames keeps it well
+        // clear; frames are pure functions of f, so the seam is invisible.
+        if (f > 0 && f % 600 === 0) { try { await browser.close(); } catch (_) {} ({ browser, page } = await open()); }
+        // Headless Chrome occasionally dies mid-run ("Target closed"). Because
+        // every frame is a pure function of f, relaunching and re-grabbing the
+        // same frame continues the video seamlessly instead of failing it.
+        let jpg;
+        for (let attempt = 0; ; attempt++) {
+            try { jpg = await grab(page, f, 'jpeg'); break; }
+            catch (e) {
+                if (attempt >= 3) throw e;
+                console.log(`frame ${f}: ${String(e.message).split(String.fromCharCode(10))[0]} — relaunching browser (${attempt + 1}/3)`);
+                try { await browser.close(); } catch (_) {}
+                ({ browser, page } = await open());
+            }
+        }
         if (!enc.stdin.write(jpg)) await new Promise(r => enc.stdin.once('drain', r));
         if (f % 150 === 0) console.log(`${Math.round(f / total * 100)}%  frame ${f}/${total}  ${Math.round((Date.now() - t0) / 1000)}s`);
     }
