@@ -75,3 +75,6 @@ video/manga/*.mp4
 video/manga/*.log
 video/manga/preview/
 video/manga/concept.png
+video/sumi/*.mp4
+video/sumi/*.log
+video/sumi/preview/
