@@ -22,8 +22,8 @@ const DIR = __dirname;
 const TMP = path.join(DIR, '.tmp');
 const SR = 44100;
 const FPS = 30;
-// Brian Multilingual: Microsoft's newer multilingual male voice, reads Thai
-const VOICE = 'en-US-BrianMultilingualNeural';
+// William Multilingual (en-AU): Microsoft's multilingual male voice, reads Thai
+const VOICE = 'en-AU-WilliamMultilingualNeural';
 
 const TITLE_SEC = 2.6;        // title card before the first line
 const GAP_SEC = 0.22;         // breath between lines in one scene
