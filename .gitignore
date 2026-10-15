@@ -81,3 +81,10 @@ video/sumi/preview/
 video/lineart/*.mp4
 video/lineart/*.log
 video/lineart/preview/
+
+# TTS cache (per-line narration downloads)
+.tts-cache/
+video/ep02/*.mp4
+video/ep02/*.wav
+video/ep02/*.log
+video/ep02/preview/

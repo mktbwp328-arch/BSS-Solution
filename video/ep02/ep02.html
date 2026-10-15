@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>EP.02 สำรวจหน้างาน — 9:16</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
+<style>
+/*    EP.02 "Site Survey AR" 9:16. Light concrete page with an engineering dot
+   grid; the company's real photos sit in one large rounded card, as if seen
+   through a survey camera, and measuring overlays (dimension lines, pins,
+   zones, scan bars) draw themselves over them. Words only — no invented
+   figures. Cuts inside a scene pull focus with a shutter flash; scene changes
+   close a camera iris on a chapter label. Captions:
+   short chunks, no box, in one colour (navy, white outline), keywords in orange.
+
+   Deterministic: render(f) sets everything from the frame number.
+   Key content stays inside TikTok's safe area (y ~150–1500). */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #e7e9ec; }
+#svg { position: absolute; inset: 0; }
+#cap { position: absolute; left: 40px; right: 40px; top: 1176px; text-align: center; }
+#capText {
+    display: inline-block; white-space: nowrap;
+    font-family: 'Kanit', sans-serif; font-weight: 900; font-size: 70px; line-height: 1.25;
+    color: #071b45; -webkit-text-stroke: 14px #fff; paint-order: stroke fill;
+    filter: drop-shadow(0 6px 0 rgba(7,27,69,.18));
+}
+#capText .hot { color: #fc8000; }
+</style>
+<script src="timeline.js"></script>
+<script src="mascot.js"></script>
+</head>
+<body>
+<svg id="svg" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <pattern id="dots" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="2.6" fill="#c3c8d0"/></pattern>
+  <pattern id="hatchO" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="22" height="22" fill="#fc8000" fill-opacity=".18"/><rect width="8" height="22" fill="#fc8000" fill-opacity=".55"/></pattern>
+  <pattern id="hatchR" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="22" height="22" fill="#e5412d" fill-opacity=".18"/><rect width="8" height="22" fill="#e5412d" fill-opacity=".6"/></pattern>
+  <pattern id="bp" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50,0 L0,0 L0,50" fill="none" stroke="#5f8fd6" stroke-opacity=".45" stroke-width="2"/></pattern>
+  <linearGradient id="scanG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fc8000" stop-opacity="0"/><stop offset=".85" stop-color="#fc8000" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity=".95"/></linearGradient>
+  <clipPath id="cardClip"><rect width="900" height="860" rx="40"/></clipPath>
+  <filter id="blurF" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur id="blurN" stdDeviation="0"/></filter>
+  <!-- photo → blueprint: luminance mapped onto navy..pale blue -->
+  <filter id="blueprint" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values=".3 .59 .11 0 0  .3 .59 .11 0 0  .3 .59 .11 0 0  0 0 0 1 0"/>
+    <feComponentTransfer><feFuncR type="table" tableValues=".03 .35 .85"/><feFuncG type="table" tableValues=".11 .5 .92"/><feFuncB type="table" tableValues=".27 .8 1"/></feComponentTransfer>
+  </filter>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#071b45" flood-opacity=".28"/></filter>
+  <filter id="sticker" x="-5%" y="-5%" width="110%" height="110%"><feMorphology in="SourceAlpha" operator="dilate" radius="5" result="fat"/><feFlood flood-color="#ffffff"/><feComposite in2="fat" operator="in" result="rim"/><feMerge><feMergeNode in="rim"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g id="bgl"></g>
+<g id="top"></g>
+<!-- the survey camera card -->
+<g transform="translate(90,290)">
+  <rect width="900" height="860" rx="40" fill="#fff" filter="url(#shadow)"/>
+  <g clip-path="url(#cardClip)">
+    <rect width="900" height="860" fill="#0b2048"/>
+    <g id="shots"></g>
+    <rect id="flash" width="900" height="860" fill="#fff" opacity="0"/>
+    <g id="iris"></g>
+  </g>
+  <rect width="900" height="860" rx="40" fill="none" stroke="#fff" stroke-width="12"/>
+  <g id="af"></g>
+</g>
+<g id="note"></g>
+<g id="avatarWrap" transform="translate(-30,1367) scale(.36)" filter="url(#sticker)"></g>
+</svg>
+<div id="cap"><span id="capText"></span></div>
+
+<script>
+(function () {
+'use strict';
+const TL = window.TL;
+const { FPS, TOTAL } = TL;
+const NAVY = '#071b45', OR = '#fc8000', RED = '#e5412d', CW = 900, CH = 860;
+const IMG = n => `../../images/works/${n}.jpg`;
+
+/* ------------------------------------------------------------- helpers */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const inv = (f, a, b) => clamp((f - a) / (b - a), 0, 1);
+const lerp = (a, b, t) => a + (b - a) * t;
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+const outBack = t => { if (t <= 0) return 0; if (t >= 1) return 1; const c = 2.2; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const inOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const els = {};
+const E = id => els[id] || (els[id] = document.getElementById(id));
+const at = (id, k, v) => { const e = E(id); if (e) e.setAttribute(k, v); };
+const lineAt = f => { for (let i = TL.lines.length - 1; i >= 0; i--) if (f >= TL.lines[i].from) return i; return -1; };
+const LN = TL.lines;
+
+/* -------------------------------------------------- overlay vocabulary
+   Every overlay element carries data-a (how it animates) and data-t (frames
+   after the shot starts). animate() drives them; builders only place them. */
+// frame offset, inside a shot, of a word in line k (by character position)
+let SHOT0 = 0;
+const W = (k, word, lead = 0) => {
+    const l = LN[k], i = word ? Math.max(0, l.text.indexOf(word)) : 0;
+    return Math.round(l.from + i / l.text.length * (l.to - l.from)) - SHOT0 + lead;
+};
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+// rounded label; its pill is sized to the text once the font is in (fitTags)
+function tag(x, y, text, t, o = {}) {
+    const { anchor = 'middle', fill = '#fff', color = NAVY, size = 36, stroke = NAVY, rot = 0, weight = 800 } = o;
+    return `<g data-a="pop" data-t="${t}" data-cx="${x}" data-cy="${y}"><g transform="rotate(${rot} ${x} ${y})">
+      <g class="tag"><rect fill="${fill}" stroke="${stroke}" stroke-width="4"/>
+      <text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="central" font-family="Kanit" font-weight="${weight}" font-size="${size}" fill="${color}">${esc(text)}</text></g></g></g>`;
+}
+// a line drawn on, with a white casing so it reads over any photo
+function stroke(d, t, col = OR, w = 7, dur = 14) {
+    return `<path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="#fff" stroke-width="${w + 7}" stroke-linecap="round" stroke-linejoin="round"/>
+            <path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+function head(x, y, ang, col, t) {
+    const p = (a, r) => `${(x + Math.cos(a) * r).toFixed(1)},${(y + Math.sin(a) * r).toFixed(1)}`;
+    return `<polygon data-a="pop" data-t="${t}" data-cx="${x}" data-cy="${y}" points="${p(ang, 4)} ${p(ang + 2.6, 30)} ${p(ang - 2.6, 30)}" fill="${col}" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>`;
+}
+// dimension line: extension ticks, arrowheads both ends, label in the middle
+function dim(x1, y1, x2, y2, label, t, col = OR) {
+    const a = Math.atan2(y2 - y1, x2 - x1), nx = -Math.sin(a) * 24, ny = Math.cos(a) * 24;
+    return stroke(`M${x1 + nx},${y1 + ny} L${x1 - nx},${y1 - ny} M${x2 + nx},${y2 + ny} L${x2 - nx},${y2 - ny}`, t, col, 6, 6) +
+        stroke(`M${x1},${y1} L${x2},${y2}`, t + 3, col, 7, 16) +
+        head(x1, y1, a, col, t + 14) + head(x2, y2, a + Math.PI, col, t + 14) +
+        tag((x1 + x2) / 2, (y1 + y2) / 2, label, t + 12, { fill: col, color: '#fff', stroke: '#fff' });
+}
+// map pin with a ring pulsing at its foot
+function pin(x, y, label, t, col = OR) {
+    return `<circle data-a="ring" data-t="${t + 6}" cx="${x}" cy="${y}" r="20" fill="none" stroke="${col}" stroke-width="5"/>
+      <g data-a="drop" data-t="${t}" data-cx="${x}" data-cy="${y}">
+        <path d="M${x},${y} C${x - 10},${y - 30} ${x - 36},${y - 46} ${x - 36},${y - 74} A36,36 0 1 1 ${x + 36},${y - 74} C${x + 36},${y - 46} ${x + 10},${y - 30} ${x},${y} Z" fill="${col}" stroke="#fff" stroke-width="6"/>
+        <circle cx="${x}" cy="${y - 76}" r="14" fill="#fff"/></g>` +
+        tag(x, y - 150, label, t + 8, { fill: '#fff', color: col === OR ? NAVY : col, stroke: col });
+}
+// focus corners around a box
+function bracket(x, y, w, h, t, col = '#fff') {
+    const k = Math.min(w, h) * .18;
+    return `<g data-a="snap" data-t="${t}" data-cx="${x + w / 2}" data-cy="${y + h / 2}" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round">
+      <path d="M${x},${y + k} L${x},${y} L${x + k},${y} M${x + w - k},${y} L${x + w},${y} L${x + w},${y + k} M${x + w},${y + h - k} L${x + w},${y + h} L${x + w - k},${y + h} M${x + k},${y + h} L${x},${y + h} L${x},${y + h - k}"/></g>`;
+}
+// hatched zone with a marching dashed edge
+function zone(x, y, w, h, label, t, red = false) {
+    const col = red ? RED : OR;
+    return `<rect data-a="fade" data-t="${t}" x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="url(#${red ? 'hatchR' : 'hatchO'})"/>
+      <rect data-a="march" data-t="${t}" x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="none" stroke="${col}" stroke-width="6" stroke-dasharray="22 14"/>` +
+        tag(x + w / 2, y + 2, label, t + 6, { fill: col, color: '#fff', stroke: '#fff' });
+}
+// warning marker: triangle, then its label
+function warn(x, y, label, t, side = 1) {
+    return `<g data-a="pop" data-t="${t}" data-cx="${x}" data-cy="${y}">
+        <polygon points="${x},${y - 46} ${x + 50},${y + 40} ${x - 50},${y + 40}" fill="${RED}" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
+        <text x="${x}" y="${y + 28}" text-anchor="middle" font-family="Kanit" font-weight="900" font-size="58" fill="#fff">!</text></g>
+      <circle data-a="ring" data-t="${t + 4}" cx="${x}" cy="${y + 6}" r="40" fill="none" stroke="${RED}" stroke-width="5"/>` +
+        tag(x + side * 70, y, label, t + 6, { anchor: side > 0 ? 'start' : 'end', fill: '#fff', color: RED, stroke: RED });
+}
+// tick badge with label
+function check(x, y, label, t) {
+    return `<g data-a="pop" data-t="${t}" data-cx="${x}" data-cy="${y}">
+        <circle cx="${x}" cy="${y}" r="36" fill="${OR}" stroke="#fff" stroke-width="6"/>
+        <path d="M${x - 16},${y + 1} L${x - 4},${y + 14} L${x + 18},${y - 13}" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></g>` +
+        tag(x + 56, y, label, t + 4, { anchor: 'start', size: 40 });
+}
+// a band sweeping down the card, repeating
+const scan = (t, y0 = 0, y1 = CH) => `<rect data-a="scan" data-t="${t}" data-y0="${y0}" data-y1="${y1}" x="0" y="0" width="${CW}" height="120" fill="url(#scanG)"/>`;
+// chevrons travelling along a path
+function flow(id, d, t, n = 4, col = OR) {
+    let s = `<path id="${id}" d="${d}" fill="none" stroke="none"/>` + `<path data-a="march" data-t="${t}" d="${d}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="6" stroke-dasharray="4 22" stroke-linecap="round"/>`;
+    for (let i = 0; i < n; i++)
+        s += `<g data-a="along" data-t="${t}" data-path="${id}" data-off="${i / n}" data-d="70"><path d="M-14,-22 L12,0 L-14,22" fill="none" stroke="#fff" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/><path d="M-14,-22 L12,0 L-14,22" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    return s;
+}
+const photo = (n, extra = '') => `<image href="${IMG(n)}" x="0" y="-20" width="${CW}" height="900" preserveAspectRatio="xMidYMid slice" ${extra}/>`;
+const dark = (o, t = 0) => `<rect data-a="fadeTo" data-t="${t}" data-o="${o}" width="${CW}" height="${CH}" fill="${NAVY}"/>`;
+
+/* ------------------------------------------------------------- shots
+   One shot per narration line (some span two). bg is the photo layer that
+   pulls focus and drifts; ar is the overlay. */
+const SHOTS = [
+  { at: () => 0, img: 'conveyor-belt-factory', ar: () =>
+      dark(.72) +
+      tag(450, 250, 'EP.02', 0, { fill: OR, color: '#fff', stroke: '#fff', size: 52, weight: 900 }) +
+      `<g data-a="rise" data-t="4"><text x="450" y="390" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="72" fill="#fff">สำรวจหน้างานอย่างไร</text></g>
+       <g data-a="rise" data-t="9"><text x="450" y="500" text-anchor="middle" font-family="Kanit" font-weight="900" font-style="italic" font-size="96" fill="${OR}">ให้ Conveyor</text></g>
+       <g data-a="rise" data-t="14"><text x="450" y="610" text-anchor="middle" font-family="Kanit" font-weight="900" font-style="italic" font-size="96" fill="#fff">ทำงานได้จริง</text></g>` +
+      bracket(70, 160, 760, 540, 18, OR) },
+
+  { line: 0, img: 'roller-conveyor', fx: 450, fy: 480, ar: () =>
+      scan(6, 120, 760) + bracket(90, 230, 720, 470, 4) +
+      tag(450, 120, 'SITE SURVEY', 10, { fill: NAVY, color: '#fff', stroke: '#fff', weight: 900 }) +
+      tag(450, 760, 'สำรวจหน้างาน', W(0, 'การสำรวจ'), { size: 44 }) },
+
+  { line: 1, img: 'conveyor-system', fx: 450, fy: 500, ar: () =>
+      dim(110, 300, 800, 300, 'ความยาว', W(1, 'ความยาว', -4)) +
+      dim(740, 400, 740, 680, 'ความกว้าง', W(1, 'ความกว้าง', -4)) +
+      tag(420, 620, 'ยังไม่พอ!', W(1, 'หรือ') + 20, { fill: RED, color: '#fff', stroke: '#fff', size: 58, rot: -8, weight: 900 }) },
+
+  { line: 2, img: 'conveyor-belt-line', fx: 520, fy: 380, ar: () =>
+      tag(200, 720, 'Conveyor', 4, { fill: OR, color: '#fff', stroke: '#fff', size: 44 }) +
+      tag(660, 170, 'การผลิต', W(2, 'การผลิต', -6), { fill: NAVY, color: '#fff', stroke: '#fff', size: 44 }) +
+      flow('fl2', 'M260,650 C420,560 470,330 600,240', W(2, 'จะทำงาน')) +
+      tag(470, 470, 'ทำงานร่วมกัน', W(2, 'ร่วมกับ'), { size: 38 }) },
+
+  { line: 3, img: 'conveyor-belt', fx: 470, fy: 470, ar: () =>
+      stroke('M235,250 C420,380 560,560 715,760', W(3, 'จุดรับ') + 10, NAVY, 6, 30) +
+      `<path id="rt3" d="M235,250 C420,380 560,560 715,760" fill="none"/>
+       <g data-a="along" data-t="${W(3, 'ไปจนถึง')}" data-path="rt3" data-off="0" data-d="60" data-once="1"><circle r="20" fill="${OR}" stroke="#fff" stroke-width="6"/></g>` +
+      pin(235, 250, 'จุดรับสินค้า', W(3, 'จุดรับ', -6)) +
+      pin(715, 760, 'จุดส่งสินค้า', W(3, 'จุดส่ง', -6), NAVY) },
+
+  { line: 4, img: 'conveyor-belt-factory', fx: 450, fy: 420, ar: () =>
+      flow('fl4', 'M120,190 L780,190', 0) + tag(450, 120, 'ทิศทางการลำเลียง', 6) +
+      stroke('M60,330 L760,330', W(4, 'ระดับ') - 4, '#fff', 4, 14) +
+      dim(700, 330, 700, 690, 'ระดับความสูง', W(4, 'ระดับ')) +
+      tag(330, 560, 'เครื่องจักรแต่ละจุด', W(4, 'เครื่องจักร'), { fill: NAVY, color: '#fff', stroke: '#fff' }) },
+
+  { line: 5, img: 'conveyor-company-chonburi', fx: 300, fy: 520, ar: () =>
+      dim(440, 150, 860, 150, 'ระยะเชื่อมต่อ', 2) +
+      zone(30, 300, 380, 520, 'พื้นที่ซ่อมบำรุง', W(5, 'พื้นที่')) +
+      bracket(470, 260, 380, 380, W(5, 'กระบวนการ'), '#fff') },
+
+  { line: 6, img: 'chain-conveyor', fx: 460, fy: 420, ar: () => {
+      const P = [[95, 210], [700, 120], [845, 520], [225, 720]];
+      let s = stroke(`M${P.map(p => p.join(',')).join(' L')} Z`, 4, OR, 6, 26);
+      P.forEach((p, i) => { s += `<circle data-a="pop" data-t="${10 + i * 5}" data-cx="${p[0]}" data-cy="${p[1]}" cx="${p[0]}" cy="${p[1]}" r="16" fill="#fff" stroke="${OR}" stroke-width="7"/>`; });
+      return s + tag(450, 420, 'โครงสร้าง', W(6, 'โครงสร้าง', -4), { fill: OR, color: '#fff', stroke: '#fff', size: 48 }) +
+          tag(450, 500, '+ การทำงาน', W(6, 'การทำงาน', -4), { size: 40 }); } },
+
+  { line: 7, img: 'pvc-conveyor-belt-system', fx: 450, fy: 500, ar: () => {
+      let s = scan(4, 200, 800) + bracket(330, 220, 520, 560, 2) + tag(590, 150, 'วิเคราะห์สินค้า', W(7, 'วิเคราะห์', -4), { fill: NAVY, color: '#fff', stroke: '#fff', size: 44 });
+      ['ขนาด', 'น้ำหนัก', 'รูปทรง', 'พื้นผิว', 'ปริมาณต่อชั่วโมง'].forEach((w, i) => { s += tag(44, 300 + i * 92, '● ' + w, W(8, w, -3), { anchor: 'start', size: 40 }); });
+      return s; } },
+
+  { line: 9, img: 'pvc-belt-conveyor', fx: 500, fy: 480, ar: () => {
+      let s = '';
+      const B = [[350, 700], [480, 515], [610, 330]];
+      B.forEach((b, i) => { s += `<rect data-a="pop" data-t="${4 + i * 5}" data-cx="${b[0]}" data-cy="${b[1]}" x="${b[0] - 48}" y="${b[1] - 34}" width="96" height="68" rx="10" fill="#fff" fill-opacity=".9" stroke="${NAVY}" stroke-width="6"/>`; });
+      s += dim(398, 640, 450, 566, '', 16) + dim(528, 455, 580, 381, '', 22);
+      s += tag(700, 560, 'ระยะห่างชิ้นงาน', W(9, 'ระยะห่าง', -6), { fill: OR, color: '#fff', stroke: '#fff' });
+      s += stroke('M90,760 C130,560 160,420 250,300', W(9, 'เปลี่ยนระดับ') - 6, NAVY, 8, 18) + head(250, 300, -0.9, NAVY, W(9, 'เปลี่ยนระดับ') + 10);
+      return s + tag(220, 220, 'เปลี่ยนระดับความสูง', W(9, 'เปลี่ยนระดับ'), {}); } },
+
+  { line: 10, img: 'roller-conveyor-system', fx: 330, fy: 360, ar: () =>
+      `<g data-a="spin" data-t="4" data-cx="300" data-cy="330"><circle cx="300" cy="330" r="190" fill="none" stroke="${OR}" stroke-width="10" stroke-dasharray="40 26"/></g>
+       <circle data-a="ring" data-t="${W(10, 'จังหวะ')}" cx="300" cy="330" r="190" fill="none" stroke="#fff" stroke-width="6"/>` +
+      tag(300, 560, 'เครื่องจักรอัตโนมัติ', W(10, 'เครื่องจักร', -4), { fill: NAVY, color: '#fff', stroke: '#fff' }) +
+      tag(660, 700, 'จังหวะเฉพาะ', W(10, 'จังหวะ', -4), { fill: OR, color: '#fff', stroke: '#fff', size: 46 }) },
+
+  { line: 11, img: 'recycling-conveyor-equipment', fx: 450, fy: 430, ar: () =>
+      `<rect data-a="blink" data-t="${W(11, 'ข้อจำกัด')}" x="10" y="10" width="880" height="840" rx="32" fill="none" stroke="${RED}" stroke-width="16"/>` +
+      tag(450, 150, 'ข้อจำกัดหน้างาน', W(11, 'ข้อจำกัด', -6), { fill: RED, color: '#fff', stroke: '#fff', size: 56, weight: 900 }) +
+      warn(150, 600, 'สำคัญมาก', W(11, 'สำคัญ'), 1) },
+
+  { line: 12, img: 'chain-conveyor-system', fx: 450, fy: 450, ar: () =>
+      warn(110, 200, 'เสาอาคาร', W(12, 'เสา', -4), 1) +
+      zone(40, 690, 820, 140, 'ทางเดินพนักงาน', W(12, 'ทางเดิน', -6), true) +
+      warn(400, 440, 'จุดที่ต้องหลีกเลี่ยง', W(12, 'จุดที่', -4), 1) },
+
+  { line: 13, img: 'conveying-system', fx: 260, fy: 520, ar: () =>
+      zone(30, 420, 470, 410, 'เข้าซ่อมบำรุงยาก', 4, true) +
+      stroke('M150,560 L380,760 M380,560 L150,760', W(13, 'ได้ยาก', -4), RED, 12, 10) },
+
+  { line: 14, img: 'conveyor-system', fx: 450, fy: 500, ar: () =>
+      `<rect data-a="alarm" data-t="${W(14, 'ใช้งานจริง')}" width="${CW}" height="${CH}" fill="${RED}"/>` +
+      check(110, 160, 'ลำเลียงได้', W(14, 'ลำเลียงได้', -4)) +
+      warn(190, 470, 'ใช้งานจริงมีปัญหา', W(14, 'ใช้งานจริง', -4), 1) +
+      tag(450, 700, 'ทั้งไลน์!', W(14, 'ทั้งไลน์', -6), { fill: RED, color: '#fff', stroke: '#fff', size: 70, weight: 900, rot: -6 }) },
+
+  { line: 15, bg: () => `<rect width="${CW}" height="${CH}" fill="#0b2a5c"/><rect width="${CW}" height="${CH}" fill="url(#bp)"/>`, ar: () => {
+      const P = [[190, 270, 'pvc-conveyor-belt-system', 'สินค้า', -6], [710, 270, 'conveyor-belt', 'พื้นที่', 5], [450, 665, 'conveyor-belt-line', 'การผลิต', -3]];
+      const t1 = W(16, 'วิเคราะห์', -10);
+      let s = '';
+      P.forEach(([x, y]) => { s += stroke(`M${x},${y} L450,450`, t1, OR, 8, 14); });
+      s += `<circle data-a="ring" data-t="${t1 + 14}" cx="450" cy="450" r="90" fill="none" stroke="${OR}" stroke-width="6"/>
+            <g data-a="pop" data-t="${t1 + 10}" data-cx="450" data-cy="450"><circle cx="450" cy="450" r="92" fill="${OR}" stroke="#fff" stroke-width="8"/>
+            <text x="450" y="450" text-anchor="middle" dominant-baseline="central" font-family="Kanit" font-weight="900" font-size="40" fill="#fff">วิเคราะห์</text></g>`;
+      P.forEach(([x, y, img, label, r], i) => {
+          s += `<g data-a="pop" data-t="${6 + i * 12}" data-cx="${x}" data-cy="${y}"><g transform="rotate(${r} ${x} ${y})">
+              <rect x="${x - 135}" y="${y - 135}" width="270" height="310" rx="14" fill="#fff"/>
+              <image href="${IMG(img)}" x="${x - 120}" y="${y - 120}" width="240" height="220" preserveAspectRatio="xMidYMid slice"/>
+              <text x="${x}" y="${y + 145}" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="40" fill="${NAVY}">${label}</text></g></g>`;
+      });
+      return s + tag(450, 66, 'ไม่ใช่แค่เก็บขนาด', W(15, 'ไม่ใช่'), { fill: '#fff', size: 40 }); } },
+
+  { line: 17, img: 'roller-conveyor', fx: 460, fy: 430, ar: () => {
+      const t = 4, d = 46;
+      return `<clipPath id="bpClip"><rect data-a="attr" data-attr="x" data-from="0" data-to="${CW}" data-t="${t}" data-d="${d}" x="0" y="0" width="${CW}" height="${CH}"/></clipPath>
+        <g clip-path="url(#bpClip)">${photo('roller-conveyor', 'filter="url(#blueprint)"')}<rect width="${CW}" height="${CH}" fill="url(#bp)"/></g>
+        <rect data-a="attr" data-attr="x" data-from="-4" data-to="${CW - 4}" data-t="${t}" data-d="${d}" x="0" y="0" width="8" height="${CH}" fill="#fff"/>` +
+        tag(170, 140, 'สินค้า', W(17, 'สินค้า', -4), { fill: OR, color: '#fff', stroke: '#fff' }) +
+        tag(450, 140, 'พื้นที่', W(17, 'พื้นที่', -4), { fill: OR, color: '#fff', stroke: '#fff' }) +
+        tag(730, 140, 'การผลิต', W(17, 'การผลิต', -4), { fill: OR, color: '#fff', stroke: '#fff' }) +
+        tag(450, 740, 'ออกแบบเฉพาะแต่ละโรงงาน', W(17, 'แต่ละ', -4), { size: 44 }); } },
+
+  { line: 18, img: 'pvc-belt-conveyor', fx: 470, fy: 440, ar: () =>
+      bracket(120, 170, 660, 560, 4, OR) +
+      tag(450, 120, 'Conveyor ที่ดี', W(18, 'Conveyor', -4), { fill: NAVY, color: '#fff', stroke: '#fff', size: 52, weight: 900 }) +
+      tag(450, 760, 'ไม่ใช่แค่ลำเลียงได้', W(18, 'ไม่ใช่', -4), { size: 42 }) },
+
+  { line: 19, img: 'factory-shutdown-service', fx: 520, fy: 380, ar: () =>
+      dark(.35, 0) +
+      check(90, 560, 'เข้ากับหน้างานจริง', W(19, 'เข้ากับ', -4)) +
+      check(90, 660, 'ปลอดภัย', W(19, 'ปลอดภัย', -4)) +
+      check(90, 760, 'ใช้งานได้ยาวนาน', W(19, 'ใช้งาน', -4)) },
+
+  { line: 20, bg: () => `<rect width="${CW}" height="${CH}" fill="#fff"/>
+        <image href="${IMG('chain-conveyor-system')}" x="0" y="0" width="${CW}" height="300" preserveAspectRatio="xMidYMid slice"/>
+        <rect y="296" width="${CW}" height="10" fill="${OR}"/>`, still: true, ar: () => {
+      let s = `<g data-a="pop" data-t="6" data-cx="450" data-cy="390">
+          <image href="../../logo.png" x="70" y="330" width="120" height="120"/>
+          <text x="215" y="392" font-family="Kanit" font-weight="900" font-style="italic" font-size="70" fill="${NAVY}">BSS <tspan fill="${OR}">SOLUTION</tspan></text>
+          <text x="217" y="440" font-family="Kanit" font-weight="800" font-size="36" fill="${NAVY}">(1978) · ทีมสำรวจหน้างาน</text></g>`;
+      [['TEL', '02-317-5470-3'], ['MOBILE', '086-822-8787, 094-846-8667'], ['MAIL', 'sale.bss1978@gmail.com'], ['LINE', 'bss_1978']].forEach(([k, v], i) => {
+          const y = 520 + i * 78;
+          s += `<g data-a="slide" data-t="${16 + i * 6}">
+              <rect x="60" y="${y - 30}" width="140" height="58" rx="29" fill="${NAVY}"/>
+              <text x="130" y="${y}" text-anchor="middle" dominant-baseline="central" font-family="Kanit" font-weight="900" font-size="${k.length > 4 ? 24 : 30}" fill="#fff">${k}</text>
+              <text x="222" y="${y}" dominant-baseline="central" font-family="Kanit" font-weight="800" font-size="${v.length > 22 ? 38 : 44}" fill="${NAVY}">${v}</text></g>`;
+      });
+      return s; } }
+];
+
+/* ------------------------------------------------------------- scenes */
+const SCN = {
+    s0: { n: '', title: 'EP.02' }, s1: { n: '', title: 'การสำรวจหน้างาน' },
+    s2: { n: '01', title: 'พื้นที่หน้างาน' }, s3: { n: '02', title: 'วิเคราะห์สินค้า' },
+    s4: { n: '03', title: 'ข้อจำกัดหน้างาน' }, s5: { n: '04', title: 'วิเคราะห์ร่วมกัน' },
+    s6: { n: '05', title: 'ออกแบบให้ใช้ได้จริง' }, s7: { n: '', title: 'ติดต่อทีมสำรวจ' }
+};
+const CHECK = ['พื้นที่', 'สินค้า', 'ข้อจำกัด', 'วิเคราะห์', 'ออกแบบ'];
+const ACTIVE = { s0: -1, s1: -1, s2: 0, s3: 1, s4: 2, s5: 3, s6: 4, s7: 5 };
+
+/* ------------------------------------------------------------- build */
+function build() {
+    SHOTS.forEach((s, k) => {
+        s.from = s.line === undefined ? s.at() : LN[s.line].from - 4;
+        SHOT0 = s.from;
+        s.fx = s.fx || 450; s.fy = s.fy || 430;
+        s.html = `<g id="shot${k}" visibility="hidden"><g id="kb${k}">${s.bg ? s.bg() : photo(s.img)}</g><g id="ar${k}">${s.ar()}</g></g>`;
+    });
+    SHOTS.forEach((s, k) => { s.to = k + 1 < SHOTS.length ? SHOTS[k + 1].from : TOTAL; });
+    E('shots').innerHTML = SHOTS.map(s => s.html).join('');
+    SHOTS.forEach((s, k) => { s.nodes = [...E('ar' + k).querySelectorAll('[data-a]')]; });
+    // checklist chips
+    let top = `<g transform="translate(90,92)"><rect width="150" height="64" rx="32" fill="${OR}"/>
+        <text x="75" y="33" text-anchor="middle" dominant-baseline="central" font-family="Kanit" font-weight="900" font-size="38" fill="#fff">EP.02</text>
+        <text x="172" y="33" dominant-baseline="central" font-family="Kanit" font-weight="800" font-size="38" fill="${NAVY}">SITE SURVEY</text>
+        <g id="rec"><circle cx="830" cy="32" r="13" fill="${RED}"/><text x="812" y="33" text-anchor="end" dominant-baseline="central" font-family="Kanit" font-weight="800" font-size="30" fill="${NAVY}">REC</text></g></g>`;
+    CHECK.forEach((c, i) => {
+        const x = 90 + i * 183;
+        top += `<g id="ck${i}"><rect id="ckb${i}" x="${x}" y="182" width="168" height="76" rx="20" stroke-width="5"/>
+            <text id="ckt${i}" x="${x + 84}" y="221" text-anchor="middle" dominant-baseline="central" font-family="Kanit" font-weight="800" font-size="34">${c}</text>
+            <g id="ckm${i}"><circle cx="${x + 158}" cy="190" r="22" fill="${OR}" stroke="#fff" stroke-width="5"/>
+            <path d="M${x + 147},${190} L${x + 155},${199} L${x + 169},${182}" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g></g>`;
+    });
+    E('top').innerHTML = top;
+    E('note').innerHTML = `<g transform="translate(400,1360)">
+        <rect width="590" height="150" rx="28" fill="#fff" stroke="${NAVY}" stroke-width="5"/>
+        <rect x="0" y="0" width="22" height="150" rx="11" fill="${OR}"/>
+        <text x="50" y="48" font-family="Kanit" font-weight="800" font-size="28" fill="#8a93a3" letter-spacing="3">SURVEY NOTE <tspan id="noteN" fill="${OR}"></tspan></text>
+        <text id="noteT" x="50" y="112" font-family="Kanit" font-weight="900" font-size="54" fill="${NAVY}"></text></g>`;
+    E('avatarWrap').innerHTML = window.MASCOT.svg;
+}
+
+// once the font is in, size every label pill to its text
+let FITTED = false;
+function fitTags() {
+    if (FITTED || document.fonts.status !== 'loaded') return;
+    document.querySelectorAll('.tag').forEach(g => {
+        const t = g.querySelector('text'), r = g.querySelector('rect'), b = t.getBBox();
+        if (!t.textContent) { r.setAttribute('width', 0); return; }
+        const fs = +t.getAttribute('font-size'), py = fs * .28, px = fs * .62;
+        const cy = +t.getAttribute('y');
+        r.setAttribute('x', (b.x - px).toFixed(1)); r.setAttribute('width', (b.width + px * 2).toFixed(1));
+        r.setAttribute('y', (cy - fs * .62 - py * .4).toFixed(1)); r.setAttribute('height', (fs * 1.24 + py * .8).toFixed(1));
+        r.setAttribute('rx', (fs * .62 + py * .4).toFixed(1));
+    });
+    FITTED = true;
+}
+
+/* ------------------------------------------------------------- animate */
+const LENS = {};
+function animate(k, l) {
+    for (const n of SHOTS[k].nodes) {
+        const a = n.dataset.a, t = +n.dataset.t || 0, d = +(n.dataset.d || 12), cx = +n.dataset.cx, cy = +n.dataset.cy;
+        const p = inv(l, t, t + d);
+        switch (a) {
+        case 'draw': n.setAttribute('stroke-dasharray', '1 1'); n.setAttribute('stroke-dashoffset', (1 - outCubic(p)).toFixed(4)); n.setAttribute('opacity', l >= t ? 1 : 0); break;
+        case 'pop': { const s = outBack(inv(l, t, t + 11)); n.setAttribute('opacity', l >= t ? 1 : 0); n.setAttribute('transform', `translate(${cx},${cy}) scale(${Math.max(.001, s).toFixed(3)}) translate(${-cx},${-cy})`); break; }
+        case 'drop': { const q = inv(l, t, t + 10), y = q < 1 ? -120 * Math.pow(1 - q, 2) : 0, sq = q >= 1 ? 1 - Math.sin(inv(l, t + 10, t + 16) * Math.PI) * .15 : 1;
+            n.setAttribute('opacity', l >= t ? 1 : 0); n.setAttribute('transform', `translate(${cx},${(cy + y).toFixed(1)}) scale(${(2 - sq).toFixed(3)},${sq.toFixed(3)}) translate(${-cx},${-cy})`); break; }
+        case 'snap': { const q = inv(l, t, t + 9), s = 1.35 - .35 * outCubic(q); n.setAttribute('opacity', (q * (l < t + 60 ? 1 : .6)).toFixed(2)); n.setAttribute('transform', `translate(${cx},${cy}) scale(${s.toFixed(3)}) translate(${-cx},${-cy})`); break; }
+        case 'fade': n.setAttribute('opacity', inv(l, t, t + 10).toFixed(3)); break;
+        case 'fadeTo': n.setAttribute('opacity', (inv(l, t, t + 10) * +n.dataset.o).toFixed(3)); break;
+        case 'rise': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(0,${((1 - q) * 50).toFixed(1)})`); break; }
+        case 'slide': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(${((1 - q) * -80).toFixed(1)},0)`); break; }
+        case 'march': n.setAttribute('opacity', inv(l, t, t + 8).toFixed(3)); n.setAttribute('stroke-dashoffset', (-l * 2.2).toFixed(1)); break;
+        case 'ring': { if (l < t) { n.setAttribute('opacity', 0); break; } const q = ((l - t) % 36) / 36; n.setAttribute('opacity', (1 - q).toFixed(3));
+            n.setAttribute('transform', `translate(${n.getAttribute('cx')},${n.getAttribute('cy')}) scale(${(1 + q * 1.4).toFixed(3)}) translate(${-n.getAttribute('cx')},${-n.getAttribute('cy')})`); break; }
+        case 'scan': { if (l < t) { n.setAttribute('opacity', 0); break; } const y0 = +n.dataset.y0, y1 = +n.dataset.y1, q = ((l - t) % 50) / 50;
+            n.setAttribute('opacity', Math.sin(q * Math.PI).toFixed(3)); n.setAttribute('y', (lerp(y0, y1, q) - 120).toFixed(1)); break; }
+        case 'along': { const path = E(n.dataset.path); if (!LENS[n.dataset.path]) LENS[n.dataset.path] = path.getTotalLength();
+            const len = LENS[n.dataset.path], once = n.dataset.once;
+            let q = (l - t) / d + +n.dataset.off; q = once ? clamp(q, 0, 1) : q - Math.floor(q);
+            const P = path.getPointAtLength(q * len), P2 = path.getPointAtLength(Math.min(len, q * len + 2)), P1 = path.getPointAtLength(Math.max(0, q * len - 2));
+            const ang = Math.atan2(P2.y - P1.y, P2.x - P1.x) * 180 / Math.PI;
+            const fade = once ? 1 : Math.min(1, q * 6, (1 - q) * 6);
+            n.setAttribute('opacity', l >= t ? (fade * inv(l, t, t + 6)).toFixed(3) : 0);
+            n.setAttribute('transform', `translate(${P.x.toFixed(1)},${P.y.toFixed(1)}) rotate(${ang.toFixed(1)})`); break; }
+        case 'spin': n.setAttribute('opacity', inv(l, t, t + 8).toFixed(3)); n.setAttribute('transform', `rotate(${(l * 1.6).toFixed(1)} ${cx} ${cy})`); break;
+        case 'blink': n.setAttribute('opacity', l < t ? 0 : (Math.floor((l - t) / 8) % 2 ? .35 : 1)); break;
+        case 'alarm': n.setAttribute('opacity', l < t ? 0 : (.12 + .16 * (Math.sin((l - t) * .5) * .5 + .5)).toFixed(3)); break;
+        case 'attr': n.setAttribute(n.dataset.attr, lerp(+n.dataset.from, +n.dataset.to, inOut(p)).toFixed(1)); break;
+        }
+    }
+}
+
+/* ------------------------------------------------------- camera & page */
+let CUR = -1;
+function shotAt(f) { for (let k = SHOTS.length - 1; k >= 0; k--) if (f >= SHOTS[k].from) return k; return 0; }
+const sceneAt = f => TL.scenes.find(s => f >= s.from && f < s.to) || TL.scenes[TL.scenes.length - 1];
+const nextShotAfter = f => SHOTS.find(s => s.from >= f);
+
+// iris for scene cuts: closes onto the chapter label, opens on the new shot
+function irisState(f) {
+    for (const sc of TL.scenes.slice(1)) {
+        const ns = nextShotAfter(sc.from); const open = ns ? ns.from : sc.from;
+        if (f >= sc.from - 10 && f < open + 10) {
+            const c = f < sc.from ? inOut(inv(f, sc.from - 10, sc.from)) : f < open ? 1 : 1 - inOut(inv(f, open, open + 10));
+            return { c, sc };
+        }
+    }
+    return null;
+}
+function camera(f) {
+    const k = shotAt(f), s = SHOTS[k], l = f - s.from;
+    if (k !== CUR) { if (CUR >= 0) at('shot' + CUR, 'visibility', 'hidden'); at('shot' + k, 'visibility', 'visible'); CUR = k; }
+    animate(k, l);
+    const ir = irisState(f);
+    const sceneCut = ir && (Math.abs(f - s.from) < 12 || Math.abs(f - s.to) < 12);
+    // focus pull: blur out over the last 6 frames, back in over the first 10
+    let blur = 0, push = 0;
+    if (!sceneCut && k > 0) { blur = Math.max(blur, (1 - inv(l, 0, 10)) * 14); }
+    if (!sceneCut && k + 1 < SHOTS.length) { const r = s.to - f; if (r <= 6) { blur = Math.max(blur, (1 - r / 6) * 14); push = 1 - r / 6; } }
+    if (s.still) blur = sceneCut ? 0 : blur;
+    const dur = Math.max(1, s.to - s.from), z = s.still ? 1 : 1.02 + .07 * (l / dur) + push * .05;
+    at('kb' + k, 'transform', `translate(${s.fx},${s.fy}) scale(${z.toFixed(4)}) translate(${-s.fx},${-s.fy})`);
+    at('kb' + k, 'filter', blur > .3 ? 'url(#blurF)' : 'none');
+    at('blurN', 'stdDeviation', blur.toFixed(2));
+    // shutter flash on in-scene cuts
+    const fl = !sceneCut && k > 0 ? Math.max(0, 1 - Math.abs(l) / 4) * .6 : 0;
+    at('flash', 'opacity', fl.toFixed(3));
+    // AF corners snap to the card on every cut
+    const q = outCubic(inv(l, 0, 10)), m = (1 - q) * 60, col = l < 14 ? OR : '#ffffff';
+    const sz = 70;
+    const corners = [[0, 0, 1, 1], [CW, 0, -1, 1], [CW, CH, -1, -1], [0, CH, 1, -1]].map(([x, y, sx, sy]) => {
+        const X = x + sx * (34 - m), Y = y + sy * (34 - m);
+        return `M${X},${Y + sy * sz} L${X},${Y} L${X + sx * sz},${Y}`;
+    }).join(' ');
+    E('af').innerHTML = `<path d="${corners}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="${(l < 14 ? 1 : .55)}"/>`;
+    // iris
+    if (ir && ir.c > .001) {
+        const R = lerp(720, 0, ir.c), rot = ir.c * 60, cx = 450, cy = 430;
+        let hex = '';
+        for (let i = 0; i < 6; i++) { const a = (rot + i * 60) * Math.PI / 180; hex += (i ? 'L' : 'M') + (cx + Math.cos(a) * R).toFixed(1) + ',' + (cy + Math.sin(a) * R).toFixed(1); }
+        let blades = '';
+        for (let i = 0; i < 6; i++) { const a = (rot + i * 60) * Math.PI / 180, b = a + Math.PI / 3 + 1.1;
+            blades += `M${(cx + Math.cos(a) * R).toFixed(1)},${(cy + Math.sin(a) * R).toFixed(1)} L${(cx + Math.cos(b) * 900).toFixed(1)},${(cy + Math.sin(b) * 900).toFixed(1)} `; }
+        const info = SCN[ir.sc.id];
+        const lab = ir.c > .85 ? `<g opacity="${inv(ir.c, .85, 1).toFixed(2)}">
+            ${info.n ? `<text x="450" y="370" text-anchor="middle" font-family="Kanit" font-weight="900" font-size="150" fill="${OR}">${info.n}</text>` : ''}
+            <text x="450" y="${info.n ? 500 : 450}" text-anchor="middle" font-family="Kanit" font-weight="900" font-size="66" fill="#fff">${info.title}</text></g>` : '';
+        E('iris').innerHTML = `<path d="M-10,-10 H910 V870 H-10 Z ${hex}Z" fill="${NAVY}" fill-rule="evenodd"/>
+            <path d="${blades}" stroke="#1d3a6e" stroke-width="5"/>${lab}`;
+    } else E('iris').innerHTML = '';
+}
+
+function topbar(f, sc) {
+    const act = ACTIVE[sc.id];
+    at('rec', 'opacity', Math.floor(f / 18) % 2 ? .25 : 1);
+    CHECK.forEach((_, i) => {
+        const done = i < act, cur = i === act;
+        at('ckb' + i, 'fill', done ? NAVY : cur ? OR : '#fff');
+        at('ckb' + i, 'stroke', done || cur ? NAVY : '#c3c8d0');
+        at('ckt' + i, 'fill', done || cur ? '#fff' : '#9aa3b2');
+        // the tick pops in when the next scene starts
+        const s = TL.scenes.find(x => ACTIVE[x.id] === i + 1);
+        const p = done && s ? outBack(inv(f, s.from, s.from + 12)) : 0;
+        const x = 90 + i * 183 + 158;
+        at('ckm' + i, 'transform', `translate(${x},190) scale(${Math.max(.001, p).toFixed(3)}) translate(${-x},-190)`);
+        const pulse = cur ? 1 + Math.sin(f * .2) * .03 : 1, cx = 90 + i * 183 + 84;
+        at('ck' + i, 'transform', `translate(${cx},220) scale(${pulse.toFixed(3)}) translate(${-cx},-220)`);
+    });
+    const info = SCN[sc.id];
+    if (E('noteT').textContent !== info.title) { E('noteT').textContent = info.title; E('noteN').textContent = info.n ? '· ' + info.n + '/05' : ''; }
+}
+
+// background: concrete page, dot grid drifting slowly, rulers on both edges
+function bg(f) {
+    const dy = (f * .4) % 40;
+    let ticks = '';
+    for (let y = -40 + ((f * 1.2) % 40); y < 1960; y += 20) { const big = Math.round((y - ((f * 1.2) % 40)) / 20) % 2 === 0; ticks += `M0,${y.toFixed(1)} L${big ? 34 : 18},${y.toFixed(1)} M1080,${y.toFixed(1)} L${big ? 1046 : 1062},${y.toFixed(1)} `; }
+    E('bgl').innerHTML = `<rect width="1080" height="1920" fill="#e7e9ec"/>
+        <rect y="${(-40 + dy).toFixed(1)}" width="1080" height="2000" fill="url(#dots)"/>
+        <path d="${ticks}" stroke="#aab2bf" stroke-width="3"/>
+        <path d="M40,1700 L1040,1700" stroke="#cfd4db" stroke-width="3" stroke-dasharray="14 12"/>`;
+}
+
+/* ------------------------------------------------------------- captions */
+const HOT = ['Conveyor', 'สำรวจหน้างาน', 'ความยาว', 'ความกว้าง', 'การผลิต', 'จุดรับสินค้า', 'จุดส่งสินค้า', 'ทิศทาง', 'ระดับความสูง',
+    'ระยะเชื่อมต่อ', 'ซ่อมบำรุง', 'โครงสร้าง', 'สินค้า', 'ขนาด', 'น้ำหนัก', 'รูปทรง', 'พื้นผิว', 'ปริมาณ', 'ระยะห่าง', 'อัตโนมัติ',
+    'จังหวะเฉพาะ', 'ข้อจำกัด', 'เสาอาคาร', 'ทางเดินพนักงาน', 'หลีกเลี่ยง', 'ทั้งไลน์', 'วิเคราะห์', 'ออกแบบ', 'ปลอดภัย', 'ยาวนาน',
+    'บีเอสเอส', 'โซลูชั่น', 'พื้นที่', 'หน้างานจริง'];
+const SEG = new Intl.Segmenter('th', { granularity: 'word' });
+const CHUNK_MAX = 13;               // short punchy chunks
+const chunkCache = {};
+// a line → chunks → segments; written spaces always break a chunk
+function chunksOf(text) {
+    if (chunkCache[text]) return chunkCache[text];
+    const out = [];
+    for (const part of text.split(' ')) {
+        let cur = [];
+        const len = a => a.join('').length;
+        for (const { segment } of SEG.segment(part)) {
+            if (cur.length && len(cur) + segment.length > CHUNK_MAX) { out.push(cur); cur = []; }
+            cur.push(segment);
+        }
+        if (cur.length) out.push(cur);
+    }
+    const merged = [];
+    for (const c of out) { if (merged.length && c.join('').length <= 3) merged[merged.length - 1] = merged[merged.length - 1].concat(c); else merged.push(c); }
+    return (chunkCache[text] = merged);
+}
+let CAP = { key: '', start: 0, hot: false, spans: [] };
+function captions(f) {
+    const i = lineAt(f), el = E('capText'), box = E('cap');
+    if (i < 0 || f > LN[i].to + 8) { box.style.opacity = 0; CAP.key = ''; CAP.hot = false; return; }
+    const ln = LN[i], chunks = chunksOf(ln.text);
+    const sizes = chunks.map(c => c.join('').length), total = sizes.reduce((a, b) => a + b, 0);
+    const p = inv(f, ln.from, ln.to) * total;
+    let acc = 0, k = 0;
+    for (; k < chunks.length - 1; k++) { if (p < acc + sizes[k]) break; acc += sizes[k]; }
+    const key = i + ':' + k;
+    if (key !== CAP.key) {
+        const str = chunks[k].join(''), hot = new Array(str.length).fill(false);
+        HOT.forEach(w => { let j = str.indexOf(w); while (j >= 0) { for (let q = j; q < j + w.length; q++) hot[q] = true; j = str.indexOf(w, j + 1); } });
+        let pos = 0, html = '';
+        const ends = [];
+        chunks[k].forEach(seg => { html += `<span class="${hot[pos] ? 'hot' : ''}">${esc(seg)}</span>`; pos += seg.length; ends.push(pos); });
+        el.innerHTML = html;
+        CAP = { key, start: Math.round(ln.from + acc / total * (ln.to - ln.from)), hot: hot.some(Boolean), spans: [...el.children], ends };
+    }
+    box.style.opacity = 1;
+    const d = Math.max(0, f - CAP.start), sc = d < 7 ? .82 + .18 * outBack(d / 7) : 1;
+    el.style.transform = `scale(${sc.toFixed(3)})`;
+}
+
+/* ------------------------------------------------------------- narrator */
+const MOOD = { s0: 'happy', s1: 'neutral', s2: 'neutral', s3: 'think', s4: 'worried', s5: 'think', s6: 'happy', s7: 'happy' };
+function narrator(f, sc) {
+    const mood = MOOD[sc.id];
+    let hop = 0;
+    for (const s of SHOTS) { const d = f - s.from; if (d >= 0 && d < 12) hop = Math.max(hop, Math.sin(d / 12 * Math.PI) * .5); }
+    // keyword chunks lift the arm nearest the card, as if pointing at it
+    let armL = 0, armR = 0;
+    if (CAP.hot) { const dd = f - CAP.start, g = dd >= 0 && dd < 24 ? Math.sin(Math.min(1, dd / 5) * Math.PI / 2) * (1 - Math.max(0, dd - 10) / 14) : 0;
+                   if (+CAP.key.split(':')[1] % 2) armL = 34 * g; else armR = 48 * g; }
+    if (mood === 'happy') { armL = Math.max(armL, 24 + Math.sin(f * .35) * 12); armR = Math.max(armR, 24 + Math.cos(f * .35) * 12); }
+    if (mood === 'worried') { armL += -4 + Math.sin(f * .9) * 1.5; armR += -4 + Math.cos(f * .9) * 1.5; }
+    if (mood === 'think') armL = Math.max(armL, 12);
+    window.MASCOT.pose(f, { talk: TL.mouth[f] || 0, hop, armL, armR, dance: mood === 'happy' && sc.id !== 's0' ? .6 : 0, enter: outCubic(inv(f, 4, 26)) });
+}
+
+function render(f) {
+    f = clamp(Math.round(f), 0, TOTAL - 1);
+    fitTags();
+    const sc = sceneAt(f);
+    bg(f);
+    topbar(f, sc);
+    camera(f);
+    captions(f);
+    narrator(f, sc);
+}
+
+build();
+render(0);
+window.__FPS = FPS; window.__TOTAL = TOTAL; window.__seek = render; window.__ready = true;
+})();
+</script>
+</body>
+</html>
