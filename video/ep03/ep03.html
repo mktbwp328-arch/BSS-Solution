@@ -68,7 +68,9 @@ const ORIG = {
     'roller-conveyor-system': 'ระบบลำเลียงแบบลูกกลิ้ง (Roller Conveyor)', 'pvc-belt-conveyor': 'PVC BELT CONVEYOR',
     'factory-shutdown-service': 'งาน shutdown โรงงาน', 'conveyor-installation-service': 'บริการติดตั้งสายพานลำเลียง'
 };
-const IMG = n => encodeURI(`../../images/BSS/${ORIG[n]}.png`);
+// photos EP.02 did not use: the general web images (works/), plus the one
+// company original EP.02 left out
+const IMG = n => ORIG[n] && n === 'conveyor-installation-service' ? encodeURI(`../../images/BSS/${ORIG[n]}.png`) : `../../images/works/${n}.jpg`;
 
 /* ------------------------------------------------------------- helpers */
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -148,83 +150,83 @@ const PATTERN = () => `<rect width="${CW}" height="${CH}" fill="url(#stripes)"/>
    of the 1920px photo; the slice drifts sideways while it is on screen. */
 const LX = 70, LY = 330;           // where labels sit: upper left, clear of the captions
 const SHOTS = [
-  { at: () => 0, img: 'conveyor-belt', ox: 500, ar: () =>
+  { at: () => 0, img: 'machinery-installation', ox: 420, ar: () =>
       dark(.68) +
       `<g data-a="rise" data-t="2">${TXT(540, 700, 'เลือก', 96, { anchor: 'middle', sw: 0 })}</g>
        <g data-a="rise" data-t="7">${TXT(540, 840, 'Conveyor', 128, { anchor: 'middle', fill: OR, sw: 0, weight: 900 })}</g>
        <g data-a="rise" data-t="12">${TXT(540, 990, 'ให้เหมาะกับงาน', 96, { anchor: 'middle', sw: 0, weight: 900 })}</g>` },
 
-  { line: 0, img: 'pvc-belt-conveyor', ox: 500, ar: () =>
+  { line: 0, img: 'article-conveyor-40', ox: 420, ar: () =>
       kick(LX, LY, 'Conveyor', W(0, 'Conveyor', -4)) },
 
-  { line: 1, img: 'conveyor-belt', ox: 480, ar: () =>
+  { line: 1, img: 'automated-conveying-line', ox: 420, ar: () =>
       kick(LX, LY, 'แค่ขนาดพอดีพื้นที่?', W(1, 'ขนาด', -6)) },
 
-  { line: 2, img: 'chain-conveyor-system', ox: 380, ar: () =>
+  { line: 2, img: 'article-shutdown-pm', ox: 300, ar: () =>
       kick(LX, LY, 'ต้องดูมากกว่านั้น', W(2, 'มากกว่า', -6)) },
 
-  { line: 3, ar: () => vs('recycling-conveyor-equipment', 450, 'conveyor-belt-line', 900, 'โรงงาน A', 'โรงงาน B', W(3, 'โรงงานหนึ่ง', -4), W(3, 'อีกโรงงาน', -4)) +
+  { line: 3, ar: () => vs('article-recycling', 700, 'article-conveyor-40', 700, 'โรงงาน A', 'โรงงาน B', W(3, 'โรงงานหนึ่ง', -4), W(3, 'อีกโรงงาน', -4)) +
       badge(268, 1130, W(3, 'เหมาะ'), true) + badge(812, 1130, W(3, 'ไม่เหมาะ'), false) },
 
-  { line: 4, img: 'roller-conveyor', ox: 620, ar: () =>
+  { line: 4, img: 'conveyor-food-industry', ox: 840, ar: () =>
       kick(LX, LY, 'กล่องน้ำหนักมาก', W(5, 'กล่อง', -6)) },
 
-  { line: 6, img: 'pvc-conveyor-belt-system', ox: 360, ar: () =>
-      flow('fl6', 'M140,900 L1000,770', 4) +
+  { line: 6, img: 'article-conveyor-40', ox: 200, ar: () =>
+      flow('fl6', 'M120,1060 L1000,900', 4) +
       kick(LX, LY, 'ชิ้นงานเล็ก ต่อเนื่อง', W(6, 'ชิ้นงาน', -6)) },
 
-  { line: 7, ar: () => vs('roller-conveyor', 620, 'pvc-conveyor-belt-system', 700, 'งานหนัก', 'งานต่อเนื่อง', 4, 10) +
+  { line: 7, ar: () => vs('conveyor-food-industry', 1100, 'article-conveyor-40', 500, 'งานหนัก', 'งานต่อเนื่อง', 4, 10) +
       kick(540, 400, 'เลือกต่างกัน', W(7, 'แตกต่าง', -6), { anchor: 'middle', size: 60 }) },
 
-  { line: 8, img: 'roller-conveyor', ox: 840, ar: () =>
+  { line: 8, img: 'conveyor-food-industry', ox: 840, ar: () =>
       kick(LX, LY, 'ขนาดสินค้า', W(8, 'ขนาด', -6)) },
 
-  { line: 9, img: 'pvc-belt-conveyor', ox: 500, ar: () =>
-      flow('fl9', 'M330,1400 L1000,620', 4, 5, 26) +
+  { line: 9, img: 'machinery-installation', ox: 200, ar: () =>
+      flow('fl9', 'M200,1300 L760,640', 4, 5, 26) +
       kick(LX, LY, 'ความเร็ว', W(9, 'เร็ว', -6)) },
 
   { line: 10, img: 'conveyor-installation-service', ox: 420, ar: () =>
       trace('M60,740 C420,520 820,560 960,1120', W(10, 'แนวตรง')) +
       kick(LX, LY, 'ตรง หรือ โค้ง', W(10, 'โค้ง', -8)) },
 
-  { line: 11, img: 'roller-conveyor-system', ox: 500, ar: () =>
-      `<g data-a="spin" data-t="4" data-cx="600" data-cy="680"><circle cx="600" cy="680" r="220" fill="none" stroke="${OR}" stroke-width="10" stroke-dasharray="44 28"/></g>` +
+  { line: 11, img: 'machinery-installation', ox: 840, ar: () =>
+      `<g data-a="spin" data-t="4" data-cx="500" data-cy="760"><circle cx="500" cy="760" r="230" fill="none" stroke="${OR}" stroke-width="10" stroke-dasharray="44 28"/></g>` +
       kick(LX, LY, 'เชื่อมต่อเครื่องจักร', W(11, 'เชื่อมต่อ', -6)) },
 
-  { line: 12, img: 'chain-conveyor', ox: 520, ar: () =>
+  { line: 12, img: 'screw-conveyor', ox: 420, ar: () =>
       badge(LX + 38, LY + 120, W(12, 'ติดตั้ง') + 8, true) +
       kick(LX, LY, 'ติดตั้งแล้วใช้ได้', W(12, 'ติดตั้ง', -2)) },
 
-  { line: 13, img: 'conveyor-system', ox: 300, ar: () =>
+  { line: 13, img: 'article-recycling', ox: 420, ar: () =>
       `<rect data-a="alarm" data-t="4" width="${CW}" height="${CH}" fill="${RED}"/>` +
       kick(LX, LY, 'แต่ปัญหาตามมา', W(13, 'ปัญหา', -6), { bar: RED }) },
 
-  { line: 14, img: 'conveyor-belt', ox: 600, ar: () =>
+  { line: 14, img: 'article-recycling', ox: 840, ar: () =>
       kick(LX, LY, 'สินค้าติดขัด', W(14, 'สินค้า', -4), { bar: RED, size: 58 }) +
       kick(LX, LY + 110, 'สึกหรอเร็ว', W(14, 'สึกหรอ', -4), { bar: RED, size: 58 }) },
 
-  { line: 15, img: 'conveyor-belt-line', ox: 600, ar: () =>
+  { line: 15, img: 'automated-conveying-line', ox: 700, ar: () =>
       kick(LX, LY, 'ไม่ทันกำลังผลิต', W(15, 'ไม่ทัน', -6), { bar: RED }) },
 
-  { line: 16, img: 'conveyor-company-chonburi', ox: 200, ar: () =>
+  { line: 16, img: 'article-shutdown-pm', ox: 600, ar: () =>
       kick(LX, LY, 'เสียเวลา', W(16, 'เวลา', -6), { bar: RED, size: 58 }) +
       kick(LX, LY + 110, 'เสียค่าใช้จ่าย', W(16, 'ค่าใช้จ่าย', -6), { bar: RED, size: 58 }) },
 
-  { line: 17, img: 'factory-shutdown-service', ox: 420, ar: () =>
+  { line: 17, img: 'industrial-conveyor-belt', ox: 420, ar: () =>
       kick(LX, LY, 'ก่อนเลือก', W(17, 'ก่อนเลือก', -6)) },
 
   { line: 18, bg: PATTERN, ar: () =>
-      cards([['roller-conveyor', 'ลูกกลิ้ง'], ['pvc-belt-conveyor', 'สายพาน'], ['chain-conveyor', 'โซ่']], 2) +
+      cards([['conveyor-installation-service', 'ลูกกลิ้ง'], ['industrial-conveyor-belt', 'สายพาน'], ['screw-conveyor', 'สกรู']], 2) +
       kick(540, 1020, 'ใช้รุ่นไหนดี?', W(18, 'รุ่นไหน', -6), { anchor: 'middle', size: 70 }) +
       strike(330, 1024, 750, W(18, 'ดี') + 14) },
 
-  { line: 19, img: 'conveyor-belt-line', ox: 900, ar: () =>
+  { line: 19, img: 'article-conveyor-40', ox: 700, ar: () =>
       dark(.35) + kick(540, 800, 'แก้ปัญหาอะไร?', W(19, 'แก้ปัญหา', -6), { anchor: 'middle', size: 96 }) },
 
-  { line: 20, img: 'pvc-belt-conveyor', ox: 560, ar: () =>
+  { line: 20, img: 'machinery-installation', ox: 500, ar: () =>
       kick(LX, LY, 'Conveyor ที่ดีที่สุด', W(20, 'ที่ดีที่สุด', -8)) },
 
-  { line: 21, img: 'chain-conveyor-system', ox: 380, ar: () =>
+  { line: 21, img: 'automated-conveying-line', ox: 420, ar: () =>
       dark(.55) +
       `<g data-a="rise" data-t="2">${TXT(540, 520, 'ไม่จำเป็นต้อง', 54, { anchor: 'middle' })}</g>` +
       `<g data-a="rise" data-t="${W(21, 'แพง', -6)}">${TXT(540, 680, 'แพงที่สุด', 104, { anchor: 'middle', weight: 900 })}</g>` +
@@ -232,14 +234,14 @@ const SHOTS = [
       `<g data-a="rise" data-t="${W(21, 'เร็ว', -6)}">${TXT(540, 860, 'เร็วที่สุด', 104, { anchor: 'middle', weight: 900 })}</g>` +
       strike(290, 870, 790, W(21, 'เร็ว') + 14) },
 
-  { line: 22, img: 'roller-conveyor', ox: 620, ar: () => {
+  { line: 22, img: 'conveyor-food-industry', ox: 500, ar: () => {
       const t = W(22, 'เหมาะ', -6);
       return dark(.25) + kick(LX, 900, 'เหมาะกับงานที่สุด', t) +
         `<rect data-a="fade" data-t="${t}" x="${LX}" y="990" width="940" height="44" rx="22" fill="#fff" fill-opacity=".3"/>
          <rect data-a="attr" data-attr="width" data-from="0" data-to="940" data-t="${t + 4}" data-d="36" x="${LX}" y="990" width="0" height="44" rx="22" fill="${OR}"/>` +
         badge(LX + 940, 1012, t + 40, true); } },
 
-  { line: 23, img: 'chain-conveyor-system', ox: 380, still: true, ar: () => {
+  { line: 23, img: 'automated-conveying-line', ox: 420, still: true, ar: () => {
       let s = dark(.4, 0) + `<g data-a="rise" data-t="2"><rect x="70" y="330" width="940" height="800" rx="44" fill="#fff"/></g>
         <g data-a="pop" data-t="8" data-cx="540" data-cy="470">
           <image href="../../logo.png" x="130" y="400" width="140" height="140"/>
