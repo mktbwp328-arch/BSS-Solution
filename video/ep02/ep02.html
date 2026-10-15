@@ -191,10 +191,9 @@ const WHITE = { fill: '#fff' }, ORANGE = { fill: OR, color: '#fff', stroke: '#ff
 const SHOTS = [
   { at: () => 0, img: 'conveyor-belt-factory', ar: () =>
       dark(.7) +
-      tag(540, 580, 'EP.02', 0, { ...ORANGE, size: 52, weight: 900 }) +
-      `<g data-a="rise" data-t="4"><text x="540" y="740" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="80" fill="#fff">สำรวจหน้างานอย่างไร</text></g>
-       <g data-a="rise" data-t="9"><text x="540" y="870" text-anchor="middle" font-family="Kanit" font-weight="900" font-style="italic" font-size="108" fill="${OR}">ให้ Conveyor</text></g>
-       <g data-a="rise" data-t="14"><text x="540" y="1000" text-anchor="middle" font-family="Kanit" font-weight="900" font-style="italic" font-size="108" fill="#fff">ทำงานได้จริง</text></g>` },
+      `<g data-a="rise" data-t="4"><text x="540" y="700" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="80" fill="#fff">สำรวจหน้างานอย่างไร</text></g>
+       <g data-a="rise" data-t="9"><text x="540" y="840" text-anchor="middle" font-family="Kanit" font-weight="900" font-style="italic" font-size="108" fill="${OR}">ให้ Conveyor</text></g>
+       <g data-a="rise" data-t="14"><text x="540" y="980" text-anchor="middle" font-family="Kanit" font-weight="900" font-style="italic" font-size="108" fill="#fff">ทำงานได้จริง</text></g>` },
 
   { line: 0, img: 'roller-conveyor', ox: 380, fx: 540, fy: 800, ar: () =>
       tag(540, 1040, 'สำรวจหน้างาน', W(0, 'การสำรวจ'), { size: 50 }) },
@@ -314,7 +313,7 @@ function build() {
     E('shots').innerHTML = SHOTS.map(s => s.html).join('');
     SHOTS.forEach((s, k) => { s.nodes = [...E('ar' + k).querySelectorAll('[data-a]')]; });
     // a quiet series label; the top of the frame stays out of the way
-    E('top').innerHTML = `<text x="70" y="110" font-family="Kanit" font-weight="800" font-size="34" fill="#fff" opacity=".85"><tspan fill="${OR}">EP.02</tspan>  สำรวจหน้างาน</text>`;
+    E('top').innerHTML = `<text x="70" y="110" font-family="Kanit" font-weight="800" font-size="34" fill="#fff" opacity=".85">สำรวจหน้างาน</text>`;
     E('avatarWrap').innerHTML = window.MASCOT.svg;
 }
 
