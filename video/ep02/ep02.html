@@ -12,7 +12,7 @@
    originals in images/BSS/ (local-only; the optimised web copies are too
    soft at 1920px tall). Cuts inside a scene pull focus with a shutter
    flash; scene changes close a camera iris on a chapter label. Captions:
-   short chunks, no box, in one colour (navy, white outline), keywords in orange.
+   short chunks, no box, in one colour (white, thick navy outline).
 
    Deterministic: render(f) sets everything from the frame number.
    Key content stays inside TikTok's safe area (y ~150–1500). */
@@ -20,13 +20,14 @@
 html, body { width: 1080px; height: 1920px; overflow: hidden; background: #e7e9ec; }
 #svg { position: absolute; inset: 0; }
 #cap { position: absolute; left: 40px; right: 40px; top: 1176px; text-align: center; }
+/* one colour for the whole line: white on a thick navy outline and a soft
+   shadow, so it reads on any photo */
 #capText {
     display: inline-block; white-space: nowrap;
-    font-family: 'Kanit', sans-serif; font-weight: 900; font-size: 70px; line-height: 1.25;
-    color: #071b45; -webkit-text-stroke: 14px #fff; paint-order: stroke fill;
-    filter: drop-shadow(0 6px 0 rgba(7,27,69,.18));
+    font-family: 'Kanit', sans-serif; font-weight: 800; font-size: 78px; line-height: 1.3;
+    letter-spacing: 1px; color: #fff; -webkit-text-stroke: 16px #071b45; paint-order: stroke fill;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.55));
 }
-#capText .hot { color: #fc8000; }
 </style>
 <script src="timeline.js"></script>
 <script src="mascot.js"></script>
@@ -59,7 +60,7 @@ html, body { width: 1080px; height: 1920px; overflow: hidden; background: #e7e9e
 <rect id="flash" width="1080" height="1920" fill="#fff" opacity="0"/>
 <g id="iris"></g>
 <g id="top"></g>
-<g id="avatarWrap" transform="translate(-30,1367) scale(.36)" filter="url(#sticker)"></g>
+<g id="avatarWrap" transform="translate(356,1367) scale(.36)" filter="url(#sticker)"></g>
 </svg>
 <div id="cap"><span id="capText"></span></div>
 
