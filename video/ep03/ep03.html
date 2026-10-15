@@ -10,14 +10,16 @@
    next photo; scene changes slide navy strips across like a conveyor and
    carry the chapter label. Comparisons split the frame (VS). Labels are
    plain white words on an orange underline, kept to one per shot; the
-   captions carry the sentence. Photos come from the full-resolution
-   originals in images/BSS/ (local-only).
+   captions carry the sentence. Footage and stills come from the
+   company library in images/รูป+วีดีโอ/ (local-only, not in git); clips
+   are used only for their first seconds, before their own headline text.
 
    Deterministic: render(f) sets everything from the frame number.
    Key content stays inside TikTok's safe area (y ~150–1500). */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0b2048; }
 #svg { position: absolute; inset: 0; }
+#vids video { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; display: none; }
 #cap { position: absolute; left: 40px; right: 40px; top: 1176px; text-align: center; }
 /* one colour for the whole line: white on a thick navy outline */
 #capText {
@@ -31,6 +33,7 @@ html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0b204
 <script src="mascot.js"></script>
 </head>
 <body>
+<div id="vids"></div>
 <svg id="svg" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
 <defs>
   <linearGradient id="scrimT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071b45" stop-opacity=".5"/><stop offset="1" stop-color="#071b45" stop-opacity="0"/></linearGradient>
@@ -121,13 +124,17 @@ function flow(id, d, t, n = 4, dur = 70) {
 // a route traced on top of the machine
 const trace = (d, t, dur = 24) => `<path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="${NAVY}" stroke-width="20" stroke-linecap="round" stroke-opacity=".6"/>
     <path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="${OR}" stroke-width="10" stroke-linecap="round"/>`;
+// the company photo/video library (local-only, not in git)
+const LIB = rel => encodeURI('../../images/รูป+วีดีโอ/BSS/' + rel);
+// a still from the library, cover-fitted to the frame (or to a box)
+const pic = (rel, x = 0, w = CW) => `<image href="${LIB(rel)}" x="${x}" y="0" width="${w}" height="${CH}" preserveAspectRatio="xMidYMid slice"/>`;
 let OX = 420;
 const photo = (n, ox = OX, extra = '') => `<image href="${IMG(n)}" x="${-ox}" y="0" width="1920" height="1920" preserveAspectRatio="xMidYMid slice" ${extra}/>`;
 const dark = (o, t = 0) => `<rect data-a="fadeTo" data-t="${t}" data-o="${o}" width="${CW}" height="${CH}" fill="${NAVY}"/>`;
 // split frame: two photos, each centred on its own subject, with a VS badge
-function vs(a, oxA, b, oxB, labA, labB, t1, t2) {
-    return `<g data-a="slideX" data-t="0" data-from="-560"><g clip-path="url(#halfL)">${photo(a, oxA)}</g></g>
-        <g data-a="slideX" data-t="0" data-from="560"><g clip-path="url(#halfR)">${photo(b, oxB - 544)}</g></g>
+function vs(a, b, labA, labB, t1, t2) {
+    return `<g data-a="slideX" data-t="0" data-from="-560">${pic(a, 0, 536)}</g>
+        <g data-a="slideX" data-t="0" data-from="560">${pic(b, 544, 536)}</g>
         <rect data-a="fade" data-t="6" x="536" y="0" width="8" height="1920" fill="#fff"/>
         <g data-a="pop" data-t="10" data-cx="540" data-cy="700"><circle cx="540" cy="700" r="66" fill="${OR}" stroke="#fff" stroke-width="8"/>
           <text x="540" y="702" text-anchor="middle" dominant-baseline="central" font-family="Kanit" font-weight="900" font-style="italic" font-size="60" fill="#fff">VS</text></g>` +
@@ -139,7 +146,7 @@ function cards(list, t) {
         const x = 200 + i * 340, y = 700, r = [-4, 2, 5][i];
         return `<g data-a="pop" data-t="${t + i * 8}" data-cx="${x}" data-cy="${y}"><g transform="rotate(${r} ${x} ${y})">
             <rect x="${x - 150}" y="${y - 170}" width="300" height="370" rx="18" fill="#fff"/>
-            <image href="${IMG(img)}" x="${x - 134}" y="${y - 154}" width="268" height="268" preserveAspectRatio="xMidYMid slice"/>
+            <image href="${LIB(img)}" x="${x - 134}" y="${y - 154}" width="268" height="268" preserveAspectRatio="xMidYMid slice"/>
             <text x="${x}" y="${y + 162}" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="40" fill="${NAVY}">${label}</text></g></g>`;
     }).join('');
 }
@@ -150,83 +157,83 @@ const PATTERN = () => `<rect width="${CW}" height="${CH}" fill="url(#stripes)"/>
    of the 1920px photo; the slice drifts sideways while it is on screen. */
 const LX = 70, LY = 330;           // where labels sit: upper left, clear of the captions
 const SHOTS = [
-  { at: () => 0, img: 'machinery-installation', ox: 420, ar: () =>
+  { at: () => 0, vid: '31-8-2569/New folder/Synchronize Your Output.mp4', ar: () =>
       dark(.68) +
       `<g data-a="rise" data-t="2">${TXT(540, 700, 'เลือก', 96, { anchor: 'middle', sw: 0 })}</g>
        <g data-a="rise" data-t="7">${TXT(540, 840, 'Conveyor', 128, { anchor: 'middle', fill: OR, sw: 0, weight: 900 })}</g>
        <g data-a="rise" data-t="12">${TXT(540, 990, 'ให้เหมาะกับงาน', 96, { anchor: 'middle', sw: 0, weight: 900 })}</g>` },
 
-  { line: 0, img: 'article-conveyor-40', ox: 420, ar: () =>
+  { line: 0, vid: '6-8-2569/Maximize Your Production output.mp4', ar: () =>
       kick(LX, LY, 'Conveyor', W(0, 'Conveyor', -4)) },
 
-  { line: 1, img: 'automated-conveying-line', ox: 420, ar: () =>
+  { line: 1, pic: 'ศูนย์กระจายสินค้าระบบสายพานอัตโนมัติ.png', ar: () =>
       kick(LX, LY, 'แค่ขนาดพอดีพื้นที่?', W(1, 'ขนาด', -6)) },
 
-  { line: 2, img: 'article-shutdown-pm', ox: 300, ar: () =>
+  { line: 2, vid: '14-8-2569/dfsa/industrial Scaling Solved.mp4', ar: () =>
       kick(LX, LY, 'ต้องดูมากกว่านั้น', W(2, 'มากกว่า', -6)) },
 
-  { line: 3, ar: () => vs('article-recycling', 700, 'article-conveyor-40', 700, 'โรงงาน A', 'โรงงาน B', W(3, 'โรงงานหนึ่ง', -4), W(3, 'อีกโรงงาน', -4)) +
+  { line: 3, ar: () => vs('สายพานลูกกลิ้งในโรงงานอุตสาหกรรม.png', 'ChatGPT Image 31 ส.ค. 2569 08_58_36.png', 'โรงงาน A', 'โรงงาน B', W(3, 'โรงงานหนึ่ง', -4), W(3, 'อีกโรงงาน', -4)) +
       badge(268, 1130, W(3, 'เหมาะ'), true) + badge(812, 1130, W(3, 'ไม่เหมาะ'), false) },
 
-  { line: 4, img: 'conveyor-food-industry', ox: 840, ar: () =>
+  { line: 4, vid: '30-7-2569/Engineered For Maximum Eddiciency.mp4', span: 2.6, ar: () =>
       kick(LX, LY, 'กล่องน้ำหนักมาก', W(5, 'กล่อง', -6)) },
 
-  { line: 6, img: 'article-conveyor-40', ox: 200, ar: () =>
+  { line: 6, vid: '31-8-2569/New folder/Eliminate Every Bottleneck.mp4', ar: () =>
       flow('fl6', 'M120,1060 L1000,900', 4) +
       kick(LX, LY, 'ชิ้นงานเล็ก ต่อเนื่อง', W(6, 'ชิ้นงาน', -6)) },
 
-  { line: 7, ar: () => vs('conveyor-food-industry', 1100, 'article-conveyor-40', 500, 'งานหนัก', 'งานต่อเนื่อง', 4, 10) +
+  { line: 7, ar: () => vs('โรงงานอัตโนมัติกับสายพานลำเลียงกล่อง.png', 'สายพานลำเลียงสีเขียวในโรงงานทันสมัย.png', 'งานหนัก', 'งานต่อเนื่อง', 4, 10) +
       kick(540, 400, 'เลือกต่างกัน', W(7, 'แตกต่าง', -6), { anchor: 'middle', size: 60 }) },
 
-  { line: 8, img: 'conveyor-food-industry', ox: 840, ar: () =>
+  { line: 8, vid: '30-7-2569/optimized Material Handling.mp4', ar: () =>
       kick(LX, LY, 'ขนาดสินค้า', W(8, 'ขนาด', -6)) },
 
-  { line: 9, img: 'machinery-installation', ox: 200, ar: () =>
+  { line: 9, vid: '30-7-2569/Advanced Sorting Solutions.mp4', ar: () =>
       flow('fl9', 'M200,1300 L760,640', 4, 5, 26) +
       kick(LX, LY, 'ความเร็ว', W(9, 'เร็ว', -6)) },
 
-  { line: 10, img: 'conveyor-installation-service', ox: 420, ar: () =>
+  { line: 10, vid: '31-8-2569/New folder/Master The Industraial Curve.mp4', ar: () =>
       trace('M60,740 C420,520 820,560 960,1120', W(10, 'แนวตรง')) +
       kick(LX, LY, 'ตรง หรือ โค้ง', W(10, 'โค้ง', -8)) },
 
-  { line: 11, img: 'machinery-installation', ox: 840, ar: () =>
+  { line: 11, vid: '14-8-2569/dfsa/Expert Engineering integration.mp4', ar: () =>
       `<g data-a="spin" data-t="4" data-cx="500" data-cy="760"><circle cx="500" cy="760" r="230" fill="none" stroke="${OR}" stroke-width="10" stroke-dasharray="44 28"/></g>` +
       kick(LX, LY, 'เชื่อมต่อเครื่องจักร', W(11, 'เชื่อมต่อ', -6)) },
 
-  { line: 12, img: 'screw-conveyor', ox: 420, ar: () =>
+  { line: 12, vid: '6-8-2569/Engineering For Uniniterrupted Flow.mp4', ar: () =>
       badge(LX + 38, LY + 120, W(12, 'ติดตั้ง') + 8, true) +
       kick(LX, LY, 'ติดตั้งแล้วใช้ได้', W(12, 'ติดตั้ง', -2)) },
 
-  { line: 13, img: 'article-recycling', ox: 420, ar: () =>
+  { line: 13, pic: 'ช่างโรงงานซ่อมสายพานลำเลียง.png', ar: () =>
       `<rect data-a="alarm" data-t="4" width="${CW}" height="${CH}" fill="${RED}"/>` +
       kick(LX, LY, 'แต่ปัญหาตามมา', W(13, 'ปัญหา', -6), { bar: RED }) },
 
-  { line: 14, img: 'article-recycling', ox: 840, ar: () =>
+  { line: 14, vid: '30-7-2569/High-Precision Roller Modules.mp4', ar: () =>
       kick(LX, LY, 'สินค้าติดขัด', W(14, 'สินค้า', -4), { bar: RED, size: 58 }) +
       kick(LX, LY + 110, 'สึกหรอเร็ว', W(14, 'สึกหรอ', -4), { bar: RED, size: 58 }) },
 
-  { line: 15, img: 'automated-conveying-line', ox: 700, ar: () =>
+  { line: 15, pic: 'สายพานลำเลียงในคลังสินค้าอุตสาหกรรม.png', ar: () =>
       kick(LX, LY, 'ไม่ทันกำลังผลิต', W(15, 'ไม่ทัน', -6), { bar: RED }) },
 
-  { line: 16, img: 'article-shutdown-pm', ox: 600, ar: () =>
+  { line: 16, vid: '6-8-2569/Precision High-Torque Drives.mp4', ar: () =>
       kick(LX, LY, 'เสียเวลา', W(16, 'เวลา', -6), { bar: RED, size: 58 }) +
       kick(LX, LY + 110, 'เสียค่าใช้จ่าย', W(16, 'ค่าใช้จ่าย', -6), { bar: RED, size: 58 }) },
 
-  { line: 17, img: 'industrial-conveyor-belt', ox: 420, ar: () =>
+  { line: 17, pic: 'โรงงานทันสมัยกับสายพานสีน้ำเงินโค้งไกล.png', ar: () =>
       kick(LX, LY, 'ก่อนเลือก', W(17, 'ก่อนเลือก', -6)) },
 
   { line: 18, bg: PATTERN, ar: () =>
-      cards([['conveyor-installation-service', 'ลูกกลิ้ง'], ['industrial-conveyor-belt', 'สายพาน'], ['screw-conveyor', 'สกรู']], 2) +
+      cards([['ChatGPT Image 31 ส.ค. 2569 08_52_11.png', 'ลูกกลิ้ง'], ['ChatGPT Image 31 ส.ค. 2569 08_58_36.png', 'สายพาน'], ['ChatGPT Image 8 ก.ย. 2569 10_29_12.png', 'โมดูลาร์']], 2) +
       kick(540, 1020, 'ใช้รุ่นไหนดี?', W(18, 'รุ่นไหน', -6), { anchor: 'middle', size: 70 }) +
       strike(330, 1024, 750, W(18, 'ดี') + 14) },
 
-  { line: 19, img: 'article-conveyor-40', ox: 700, ar: () =>
+  { line: 19, vid: '6-8-2569/local Engineering Excellence.mp4', ar: () =>
       dark(.35) + kick(540, 800, 'แก้ปัญหาอะไร?', W(19, 'แก้ปัญหา', -6), { anchor: 'middle', size: 96 }) },
 
-  { line: 20, img: 'machinery-installation', ox: 500, ar: () =>
+  { line: 20, vid: '31-8-2569/New folder/Precision-Engineered Throughput.mp4', ar: () =>
       kick(LX, LY, 'Conveyor ที่ดีที่สุด', W(20, 'ที่ดีที่สุด', -8)) },
 
-  { line: 21, img: 'automated-conveying-line', ox: 420, ar: () =>
+  { line: 21, pic: 'สายพานลำเลียงสีน้ำเงินในโรงงาน.png', ar: () =>
       dark(.55) +
       `<g data-a="rise" data-t="2">${TXT(540, 520, 'ไม่จำเป็นต้อง', 54, { anchor: 'middle' })}</g>` +
       `<g data-a="rise" data-t="${W(21, 'แพง', -6)}">${TXT(540, 680, 'แพงที่สุด', 104, { anchor: 'middle', weight: 900 })}</g>` +
@@ -234,14 +241,14 @@ const SHOTS = [
       `<g data-a="rise" data-t="${W(21, 'เร็ว', -6)}">${TXT(540, 860, 'เร็วที่สุด', 104, { anchor: 'middle', weight: 900 })}</g>` +
       strike(290, 870, 790, W(21, 'เร็ว') + 14) },
 
-  { line: 22, img: 'conveyor-food-industry', ox: 500, ar: () => {
+  { line: 22, pic: 'สายพานลำเลียงอุตสาหกรรมในโรงงานสมัยใหม่.png', ar: () => {
       const t = W(22, 'เหมาะ', -6);
       return dark(.25) + kick(LX, 900, 'เหมาะกับงานที่สุด', t) +
         `<rect data-a="fade" data-t="${t}" x="${LX}" y="990" width="940" height="44" rx="22" fill="#fff" fill-opacity=".3"/>
          <rect data-a="attr" data-attr="width" data-from="0" data-to="940" data-t="${t + 4}" data-d="36" x="${LX}" y="990" width="0" height="44" rx="22" fill="${OR}"/>` +
         badge(LX + 940, 1012, t + 40, true); } },
 
-  { line: 23, img: 'automated-conveying-line', ox: 420, still: true, ar: () => {
+  { line: 23, pic: 'ChatGPT Image 8 ก.ย. 2569 10_02_47.png', still: true, ar: () => {
       let s = dark(.4, 0) + `<g data-a="rise" data-t="2"><rect x="70" y="330" width="940" height="800" rx="44" fill="#fff"/></g>
         <g data-a="pop" data-t="8" data-cx="540" data-cy="470">
           <image href="../../logo.png" x="130" y="400" width="140" height="140"/>
@@ -268,11 +275,15 @@ function build() {
     SHOTS.forEach((s, k) => {
         s.from = s.line === undefined ? s.at() : LN[s.line].from - 4;
         SHOT0 = s.from; OX = s.ox === undefined ? 420 : s.ox;
-        const bg = s.bg ? s.bg() : s.img ? photo(s.img) : '';
+        const bg = s.bg ? s.bg() : s.pic ? pic(s.pic) : s.img ? photo(s.img) : '';
         s.html = `<g id="shot${k}" visibility="hidden"><g id="kb${k}">${bg}</g><g id="ar${k}">${s.ar()}</g></g>`;
     });
     SHOTS.forEach((s, k) => { s.to = k + 1 < SHOTS.length ? SHOTS[k + 1].from : TOTAL; });
     E('shots').innerHTML = SHOTS.map(s => s.html).join('');
+    // video shots: one muted <video> each, under the svg, seeked frame by frame
+    SHOTS.forEach((s, k) => { if (!s.vid) return;
+        const v = document.createElement('video'); v.muted = true; v.preload = 'auto'; v.playsInline = true; v.src = LIB(s.vid);
+        v.id = 'vid' + k; E('vids').appendChild(v); s.el = v; });
     SHOTS.forEach((s, k) => { s.nodes = [...E('ar' + k).querySelectorAll('[data-a]')]; });
     E('top').innerHTML = TXT(70, 110, 'เลือก Conveyor ให้เหมาะกับงาน', 34, { sw: 0 }).replace('<text ', '<text opacity=".85" ');
     E('avatarWrap').innerHTML = window.MASCOT.svg;
@@ -336,6 +347,20 @@ function wipeState(f) {
 }
 const WHIP = 8;
 let VIS = new Set();
+// clips are used only for their first seconds (the library clips get
+// headline text later on); long shots play that stretch slowed, back and forth
+const CLIP0 = .3;
+function clipTime(s, l) {
+    const span = s.span || 3.8, t = Math.max(0, l) / FPS * .8, p = t % (span * 2);
+    return CLIP0 + (p < span ? p : span * 2 - p);
+}
+let SEEKS = [];
+const seekTo = (v, t) => new Promise(res => {
+    const go = () => { if (Math.abs(v.currentTime - t) < .001 && v.readyState >= 2) return res();
+        const done = () => { v.removeEventListener('seeked', done); res(); };
+        v.addEventListener('seeked', done); v.currentTime = t; };
+    if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
+});
 function camera(f) {
     const k = shotAt(f), s = SHOTS[k], l = f - s.from;
     const w = wipeState(f);
@@ -359,6 +384,13 @@ function camera(f) {
         at('kb' + pk, 'filter', 'url(#whipP)'); at('whipNP', 'stdDeviation', `${blur.toFixed(1)} 0`);
         animate(pk, f - SHOTS[pk].from);
     } else if (k > 0) { at('shot' + (k - 1), 'transform', ''); at('kb' + (k - 1), 'filter', 'none'); }
+    // video layers follow the same pan, drift and blur as their shot
+    for (const [kk, x, dr, bl] of [[k, (1 - whip) * CW, drift, blur]].concat(whip < 1 ? [[k - 1, -whip * CW, 0, blur]] : [])) {
+        const v = SHOTS[kk].el; if (!v) continue;
+        v.style.transform = `translateX(${(x + dr).toFixed(1)}px) scale(1.04)`; v.style.filter = bl > .5 ? `blur(${(bl / 4).toFixed(1)}px)` : 'none';
+        SEEKS.push([v, clipTime(SHOTS[kk], f - SHOTS[kk].from)]);
+    }
+    SHOTS.forEach((sh, kk) => { if (sh.el) sh.el.style.display = show.has(kk) ? 'block' : 'none'; });
     // strips
     if (w) {
         let html = '', cover = 1;
@@ -438,13 +470,15 @@ function narrator(f, sc) {
     window.MASCOT.pose(f, { talk: TL.mouth[f] || 0, hop, armL, armR, dance: mood === 'happy' && sc.id !== 's0' ? .6 : 0, enter: outCubic(inv(f, 4, 26)) });
 }
 
-function render(f) {
+async function render(f) {
     f = clamp(Math.round(f), 0, TOTAL - 1);
+    SEEKS = [];
     fitLabels();
     const sc = sceneAt(f);
     camera(f);
     captions(f);
     narrator(f, sc);
+    await Promise.all(SEEKS.map(([v, t]) => seekTo(v, t)));
 }
 
 build();
