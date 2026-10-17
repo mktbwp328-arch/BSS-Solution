@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ทำไมเร่งสายพานอย่างเดียวไม่พอ — 9:16</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
+<style>
+/* EP.05 "Flow Counter" 9:16. Company footage behind a story told mostly
+   with moving diagrams: a little deterministic line simulation (a fast
+   source, a slower next step, boxes piling up even after the belt is sped
+   up) and an overview of four steps with their capacity bars. Labels are
+   slanted speed tags. Cuts inside a scene punch in from a zoom; scene
+   changes sweep a gauge needle round onto the chapter card. Footage comes
+   from the company library in images/รูป+วีดีโอ/ (local-only, not in git),
+   only the text-free opening seconds of each clip, none of it used in an
+   earlier episode.
+
+   Deterministic: render(f) sets everything from the frame number.
+   Key content stays inside TikTok's safe area (y ~150–1500). */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0b2048; }
+/* footage sits in its own stacking layer under the svg */
+#vids { position: absolute; inset: 0; z-index: 0; isolation: isolate; }
+#svg { position: absolute; inset: 0; z-index: 1; }
+#vids video { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; display: none; }
+#cap { position: absolute; left: 40px; right: 40px; top: 1176px; text-align: center; }
+/* one colour for the whole line: white on a thick navy outline */
+#capText {
+    display: inline-block; white-space: nowrap;
+    font-family: 'Kanit', sans-serif; font-weight: 800; font-size: 78px; line-height: 1.3;
+    letter-spacing: 1px; color: #fff; -webkit-text-stroke: 16px #071b45; paint-order: stroke fill;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.55));
+}
+</style>
+<script src="timeline.js"></script>
+<script src="mascot.js"></script>
+</head>
+<body>
+<div id="vids"></div>
+<svg id="svg" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="scrimT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071b45" stop-opacity=".5"/><stop offset="1" stop-color="#071b45" stop-opacity="0"/></linearGradient>
+  <linearGradient id="scrimB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071b45" stop-opacity="0"/><stop offset=".45" stop-color="#071b45" stop-opacity=".45"/><stop offset="1" stop-color="#071b45" stop-opacity=".85"/></linearGradient>
+  <pattern id="stripes" width="60" height="60" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)"><rect width="60" height="60" fill="#0b2a5c"/><rect width="26" height="60" fill="#0e3170"/></pattern>
+  <!-- horizontal motion blur for the whip-pans -->
+  <filter id="whipF" x="-10%" y="0" width="120%" height="100%"><feGaussianBlur id="whipN" stdDeviation="0 0"/></filter>
+  <filter id="whipP" x="-10%" y="0" width="120%" height="100%"><feGaussianBlur id="whipNP" stdDeviation="0 0"/></filter>
+  <filter id="sticker" x="-5%" y="-5%" width="110%" height="110%"><feMorphology in="SourceAlpha" operator="dilate" radius="5" result="fat"/><feFlood flood-color="#ffffff"/><feComposite in2="fat" operator="in" result="rim"/><feMerge><feMergeNode in="rim"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <pattern id="bp" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60,0 L0,0 L0,60" fill="none" stroke="#9cc3ff" stroke-opacity=".35" stroke-width="2"/></pattern>
+  <clipPath id="revealClip"><rect id="revealRect" width="0" height="1920"/></clipPath>
+  <clipPath id="halfL"><rect width="536" height="1920"/></clipPath>
+  <clipPath id="halfR"><rect x="544" width="536" height="1920"/></clipPath>
+</defs>
+<g id="shots"></g>
+<g id="scanline"></g>
+<rect width="1080" height="260" fill="url(#scrimT)"/>
+<rect y="1080" width="1080" height="840" fill="url(#scrimB)"/>
+<rect id="flash" width="1080" height="1920" fill="#fff" opacity="0"/>
+<g id="wipe"></g>
+<g id="top"></g>
+<g id="avatarWrap" transform="translate(356,1367) scale(.36)" filter="url(#sticker)"></g>
+</svg>
+<div id="cap"><span id="capText"></span></div>
+
+<script>
+(function () {
+'use strict';
+const TL = window.TL;
+const { FPS, TOTAL } = TL;
+const NAVY = '#071b45', OR = '#fc8000', RED = '#e5412d', CW = 1080, CH = 1920;
+// web name → full-resolution original (matched by image content)
+const ORIG = {
+    'roller-conveyor': 'Roller Conveyor ลูกกลิ้ง', 'conveyor-belt-line': 'สายพานลำเลียง', 'chain-conveyor': 'CHAIN CONVEYOR',
+    'pvc-conveyor-belt-system': 'ระบบสายพานลำเลียงแบบ PVC', 'conveyor-company-chonburi': 'บริษัท รับทำ conveyor ชลบุรี',
+    'conveying-system': 'ระบบลำเลียง', 'conveyor-belt-factory': 'โรงงานผลิตสายพานลำเลียง',
+    'chain-conveyor-system': 'ระบบลำเลียงแบบโซ่ Chain Conveyor', 'conveyor-belt': 'สายพานลำเลียง conveyor belt',
+    'recycling-conveyor-equipment': 'ระบบลำเลียง Recycle Equipment', 'conveyor-system': 'Conveyor',
+    'roller-conveyor-system': 'ระบบลำเลียงแบบลูกกลิ้ง (Roller Conveyor)', 'pvc-belt-conveyor': 'PVC BELT CONVEYOR',
+    'factory-shutdown-service': 'งาน shutdown โรงงาน', 'conveyor-installation-service': 'บริการติดตั้งสายพานลำเลียง'
+};
+// photos EP.02 did not use: the general web images (works/), plus the one
+// company original EP.02 left out
+const IMG = n => ORIG[n] && n === 'conveyor-installation-service' ? encodeURI(`../../images/BSS/${ORIG[n]}.png`) : `../../images/works/${n}.jpg`;
+
+/* ------------------------------------------------------------- helpers */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const inv = (f, a, b) => clamp((f - a) / (b - a), 0, 1);
+const lerp = (a, b, t) => a + (b - a) * t;
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+const outBack = t => { if (t <= 0) return 0; if (t >= 1) return 1; const c = 2.2; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const inOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const els = {};
+const E = id => els[id] || (els[id] = document.getElementById(id));
+const at = (id, k, v) => { const e = E(id); if (e) e.setAttribute(k, v); };
+const lineAt = f => { for (let i = TL.lines.length - 1; i >= 0; i--) if (f >= TL.lines[i].from) return i; return -1; };
+const LN = TL.lines;
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+/* -------------------------------------------------- overlay vocabulary
+   Every overlay element carries data-a (how it animates) and data-t (frames
+   after the shot starts). animate() drives them; builders only place them. */
+let SHOT0 = 0;
+// frame offset, inside the current shot, of a word in line k
+const W = (k, word, lead = 0) => {
+    const l = LN[k], i = word ? Math.max(0, l.text.indexOf(word)) : 0;
+    return Math.round(l.from + i / l.text.length * (l.to - l.from)) - SHOT0 + lead;
+};
+const TXT = (x, y, s, size, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.anchor || 'start'}" dominant-baseline="central" font-family="Kanit" font-weight="${o.weight || 800}" font-size="${size}" fill="${o.fill || '#fff'}" stroke="${o.stroke || NAVY}" stroke-width="${o.sw === undefined ? size * .2 : o.sw}" stroke-linejoin="round" paint-order="stroke fill">${esc(s)}</text>`;
+// the label: a word or two in white, an orange bar drawing in underneath
+function kick(x, y, text, t, o = {}) {
+    const { size = 64, anchor = 'start', bar = OR } = o;
+    return `<g data-a="kick" data-t="${t}" class="kick" data-anchor="${anchor}">
+        <rect class="kbar" x="${x}" y="${y + size * .52}" width="0" height="${Math.round(size * .16)}" rx="${Math.round(size * .08)}" fill="${bar}"/>
+        ${TXT(x, y, text, size, { anchor })}</g>`;
+}
+// a red line struck through a label
+const strike = (x1, y, x2, t) => `<path data-a="draw" data-t="${t}" data-d="8" pathLength="1" d="M${x1},${y} L${x2},${y - 10}" stroke="${RED}" stroke-width="14" stroke-linecap="round" fill="none"/>`;
+function badge(x, y, t, ok = true) {
+    const col = ok ? OR : RED;
+    const mark = ok ? `<path d="M${x - 17},${y + 1} L${x - 5},${y + 14} L${x + 19},${y - 13}" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`
+                    : `<path d="M${x - 14},${y - 14} L${x + 14},${y + 14} M${x + 14},${y - 14} L${x - 14},${y + 14}" stroke="#fff" stroke-width="10" stroke-linecap="round"/>`;
+    return `<g data-a="pop" data-t="${t}" data-cx="${x}" data-cy="${y}"><circle cx="${x}" cy="${y}" r="38" fill="${col}" stroke="#fff" stroke-width="6"/>${mark}</g>`;
+}
+// chevrons travelling along a path (direction / speed)
+function flow(id, d, t, n = 4, dur = 70) {
+    let s = `<path id="${id}" d="${d}" fill="none" stroke="none"/>`;
+    for (let i = 0; i < n; i++)
+        s += `<g data-a="along" data-t="${t}" data-path="${id}" data-off="${i / n}" data-d="${dur}"><path d="M-16,-26 L14,0 L-16,26" fill="none" stroke="${NAVY}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/><path d="M-16,-26 L14,0 L-16,26" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    return s;
+}
+// a route traced on top of the machine
+const trace = (d, t, dur = 24) => `<path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="${NAVY}" stroke-width="20" stroke-linecap="round" stroke-opacity=".6"/>
+    <path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="${OR}" stroke-width="10" stroke-linecap="round"/>`;
+// the company photo/video library (local-only, not in git)
+const LIB = rel => encodeURI('../../images/รูป+วีดีโอ/BSS/' + rel);
+// a still from the library, cover-fitted to the frame (or to a box)
+const pic = (rel, x = 0, w = CW) => `<image href="${LIB(rel)}" x="${x}" y="0" width="${w}" height="${CH}" preserveAspectRatio="xMidYMid slice"/>`;
+let OX = 420;
+const photo = (n, ox = OX, extra = '') => `<image href="${IMG(n)}" x="${-ox}" y="0" width="1920" height="1920" preserveAspectRatio="xMidYMid slice" ${extra}/>`;
+const dark = (o, t = 0) => `<rect data-a="fadeTo" data-t="${t}" data-o="${o}" width="${CW}" height="${CH}" fill="${NAVY}"/>`;
+// split frame: two photos, each centred on its own subject, with a VS badge
+function vs(a, b, labA, labB, t1, t2) {
+    return `<g data-a="slideX" data-t="0" data-from="-560">${pic(a, 0, 536)}</g>
+        <g data-a="slideX" data-t="0" data-from="560">${pic(b, 544, 536)}</g>
+        <rect data-a="fade" data-t="6" x="536" y="0" width="8" height="1920" fill="#fff"/>
+        <g data-a="pop" data-t="10" data-cx="540" data-cy="700"><circle cx="540" cy="700" r="66" fill="${OR}" stroke="#fff" stroke-width="8"/>
+          <text x="540" y="702" text-anchor="middle" dominant-baseline="central" font-family="Kanit" font-weight="900" font-style="italic" font-size="60" fill="#fff">VS</text></g>` +
+        kick(268, 1010, labA, t1, { size: 54, anchor: 'middle' }) + kick(812, 1010, labB, t2, { size: 54, anchor: 'middle' });
+}
+// three small cards in a row (conveyor types)
+function cards(list, t) {
+    return list.map(([img, label], i) => {
+        const x = 200 + i * 340, y = 700, r = [-4, 2, 5][i];
+        return `<g data-a="pop" data-t="${t + i * 8}" data-cx="${x}" data-cy="${y}"><g transform="rotate(${r} ${x} ${y})">
+            <rect x="${x - 150}" y="${y - 170}" width="300" height="370" rx="18" fill="#fff"/>
+            <image href="${LIB(img)}" x="${x - 134}" y="${y - 154}" width="268" height="268" preserveAspectRatio="xMidYMid slice"/>
+            <text x="${x}" y="${y + 162}" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="40" fill="${NAVY}">${label}</text></g></g>`;
+    }).join('');
+}
+const PATTERN = () => `<rect width="${CW}" height="${CH}" fill="url(#stripes)"/>`;
+
+/* ------------------------------------------------------ speed tags
+   EP.05 labels: a slanted tag like a speed sticker, sized to its text. */
+const SK = Math.tan(12 * Math.PI / 180);
+function tag5(x, y, text, t, o = {}) {
+    const { anchor = 'middle', fill = OR, size = 54, color = '#fff' } = o;
+    return `<g data-a="rise" data-t="${t}"><g class="cbox" data-anchor="${anchor}">
+        <rect rx="6" fill="${fill}" stroke="#fff" stroke-width="4" transform="translate(${(SK * y).toFixed(1)},0) skewX(-12)"/>
+        <text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="central" font-family="Kanit" font-weight="900" font-style="italic" font-size="${size}" fill="${color}">${esc(text)}</text></g></g>`;
+}
+const center = (y, s, size, t, fill = '#fff') => `<g data-a="rise" data-t="${t}">${TXT(540, y, s, size, { anchor: 'middle', fill, weight: 900 })}</g>`;
+// speed streaks: fast white dashes running along a path
+function streaks(id, d, t, n = 6, dur = 16) {
+    let s = `<path id="${id}" d="${d}" fill="none" stroke="none"/>`;
+    for (let i = 0; i < n; i++)
+        s += `<g data-a="along" data-t="${t}" data-path="${id}" data-off="${i / n}" data-d="${dur}"><rect x="-70" y="-5" width="140" height="10" rx="5" fill="#fff" opacity=".85"/></g>`;
+    return s;
+}
+
+/* ------------------------------------------------- the bottleneck model
+   Deterministic little simulation: the source makes one box every TA
+   frames, the next step takes one every TB frames (10 : 6 a minute), boxes
+   ride the belt and queue in front of the slow step. Speeding the belt up
+   (at tFast) gets boxes there sooner, but the queue keeps growing. */
+const SIM = { TA: 18, TB: 30, X0: 300, X1: 690, Y: 860, BOX: 54 };
+function simBoxes(l, t0, tFast) {
+    const out = [], speed = t => (t >= tFast ? 15 : 7);
+    let lastIn = -1e9;
+    for (let i = 0; ; i++) {
+        const born = t0 + i * SIM.TA;
+        if (born > l) break;
+        // travel time along the belt, faster once the belt is sped up
+        let x = SIM.X0, t = born;
+        while (x < SIM.X1 && t < l + 400) { x += speed(t); t++; }
+        const arrive = t;
+        const enter = Math.max(arrive, lastIn + SIM.TB);
+        lastIn = enter;
+        out.push({ born, arrive, enter });
+    }
+    const boxes = [];
+    let queue = 0;
+    for (const b of out) {
+        if (l >= b.enter + 10) continue;                      // gone into the machine
+        if (l >= b.enter) { boxes.push({ x: SIM.X1 + 30 + (l - b.enter) * 6, y: SIM.Y, o: 1 - (l - b.enter) / 10 }); continue; }
+        if (l >= b.arrive) { boxes.push({ q: queue++ }); continue; }
+        let x = SIM.X0, t = b.born; while (t < l) { x += speed(t); t++; }
+        boxes.push({ x, y: SIM.Y, o: 1 });
+    }
+    // queued boxes stack back from the machine, then upward
+    return boxes.map(b => b.q === undefined ? b : { x: SIM.X1 - 30 - (b.q % 6) * (SIM.BOX + 6), y: SIM.Y - Math.floor(b.q / 6) * (SIM.BOX + 6), o: 1, queued: true });
+}
+function machine(x, y, w, h, title, rate, t, id) {
+    return `<g data-a="pop" data-t="${t}" data-cx="${x + w / 2}" data-cy="${y + h / 2}">
+        <rect id="${id}" x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="#11295a" stroke="#fff" stroke-width="5"/>
+        <rect x="${x + 24}" y="${y + 24}" width="${w - 48}" height="${h * .34}" rx="10" fill="#1d3f80"/>
+        <circle cx="${x + w - 40}" cy="${y + h - 40}" r="12" fill="${OR}"/>
+        ${TXT(x + w / 2, y - 44, title, 44, { anchor: 'middle', sw: 9 })}</g>
+      <g data-a="rise" data-t="${t + 8}">${TXT(x + w / 2, y + h * .2 + 24, rate, 38, { anchor: 'middle', fill: OR, sw: 0, weight: 900 })}</g>`;
+}
+function bottleneckShot(k) {
+    const T = { a: W(5, '10', -8), b: W(6, '6', -8), fast: W(7, 'เร่ง', -4), pile: W(7, 'สะสม', -6), cross: W(8, 'ความเร็ว', -4), cap: W(9, 'ความสามารถ', -6) };
+    const s = `${dark(.78)}
+      <g data-a="fade" data-t="0"><rect x="${SIM.X0 - 10}" y="${SIM.Y + 34}" width="${SIM.X1 - SIM.X0 + 20}" height="34" rx="17" fill="#2a4b8c" stroke="#fff" stroke-width="4"/>
+        <path id="belt5" d="" stroke="#fff" stroke-opacity=".35" stroke-width="6" stroke-dasharray="18 22"/></g>` +
+      machine(60, 760, 240, 260, 'ต้นทาง', '10 ชิ้น/นาที', T.a, 'mA') +
+      machine(700, 760, 300, 260, 'ขั้นตอนถัดไป', '6 ชิ้น/นาที', T.b, 'mB') +
+      `<g id="boxes5"></g>` +
+      tag5(500, 560, 'เร่งสายพาน ×2', T.fast, {}) +
+      `<path data-a="draw" data-t="${T.cross}" data-d="8" pathLength="1" d="M300,560 L700,550" stroke="${RED}" stroke-width="14" stroke-linecap="round" fill="none"/>` +
+      tag5(470, 1110, 'สินค้าสะสม!', T.pile, { fill: RED }) +
+      `<rect data-a="blink" data-t="${T.cap}" x="690" y="750" width="320" height="280" rx="28" fill="none" stroke="${OR}" stroke-width="12"/>` +
+      tag5(850, 420, 'ความสามารถของขั้นตอน', T.cap, { size: 46 });
+    SHOTS[k].tick = (l) => {
+        const fast = l >= T.fast, off = (l * (fast ? 15 : 7)) % 40;
+        at('belt5', 'd', `M${SIM.X0},${SIM.Y + 51} L${SIM.X1},${SIM.Y + 51}`);
+        at('belt5', 'stroke-dashoffset', (-off).toFixed(1));
+        let html = '';
+        if (l >= T.a) for (const b of simBoxes(l, T.a, T.fast)) {
+            const half = SIM.BOX / 2;
+            html += `<g opacity="${b.o.toFixed(2)}"><rect x="${(b.x - half).toFixed(1)}" y="${(b.y - half).toFixed(1)}" width="${SIM.BOX}" height="${SIM.BOX}" rx="6" fill="${b.queued && l >= T.pile ? '#f3a65c' : '#d9a066'}" stroke="#5b3a17" stroke-width="3"/>
+                     <path d="M${(b.x - half).toFixed(1)},${(b.y - 6).toFixed(1)} H${(b.x + half).toFixed(1)}" stroke="#8a5a2b" stroke-width="3"/></g>`;
+        }
+        E('boxes5').innerHTML = html;
+    };
+    return s;
+}
+// the whole line at a glance: four steps, their capacity bars, the slow one
+function overviewShot(k) {
+    const T = { neck: W(15, 'คอขวด', -6), cap: W(16, 'รองรับ', -6), sync: W(17, 'สัมพันธ์', -6) };
+    const X = [80, 330, 580, 830], H = [300, 260, 120, 280];
+    let s = dark(.8);
+    X.forEach((x, i) => {
+        s += `<g data-a="pop" data-t="${4 + i * 6}" data-cx="${x + 85}" data-cy="640"><rect id="st${i}" x="${x}" y="560" width="170" height="160" rx="20" fill="#11295a" stroke="#fff" stroke-width="5"/>
+              ${TXT(x + 85, 640, String(i + 1), 72, { anchor: 'middle', sw: 0, weight: 900 })}</g>`;
+        if (i < 3) s += `<path data-a="draw" data-t="${10 + i * 6}" data-d="8" pathLength="1" d="M${x + 175},640 L${X[i + 1] - 5},640" stroke="#fff" stroke-width="10" stroke-linecap="round"/>`;
+        s += `<rect data-a="attr" data-attr="height" data-from="0" data-to="${H[i]}" data-t="${T.cap + i * 4}" data-d="16" x="${x + 45}" y="760" width="80" height="0" rx="10" fill="${i === 2 ? RED : OR}"/>`;
+    });
+    s += `<rect data-a="blink" data-t="${T.neck}" x="570" y="550" width="190" height="180" rx="26" fill="none" stroke="${RED}" stroke-width="12"/>` +
+        tag5(665, 470, 'คอขวด', T.neck, { fill: RED, size: 58 }) +
+        tag5(540, 1110, 'รองรับได้เท่าไร', T.cap, { size: 48 }) +
+        flow('fl17', 'M100,640 L1000,640', T.sync, 6, 60) +
+        tag5(540, 360, 'ทำงานสัมพันธ์กัน', T.sync, { size: 52 });
+    return s;
+}
+
+/* ------------------------------------------------------------- shots
+   vid = a clip from the company library (only its text-free opening);
+   vz = zoom toward the top, pushing a clip's lower caption band off screen. */
+const V = {
+    belts: '7-10-2569/Synchronized Line Velocity.mp4', line54: '7-10-2569/Scale up Daily Plant output.mp4',
+    rollers53: '7-10-2569/Heavy Duty Power Transmission.mp4', curve55: '7-10-2569/Smooth Turns Zero Jamming.mp4',
+    modular52: '7-10-2569/Custom Curves Zero Jamming.mp4', 
+    boxes6: '14-10-2569/f7d6YYo0UKF_z-KZAXUFEw.m4v', boxes50: '4wBc2rR30z0RCUuir4UMZA.m4v',
+    tech7: '14-8-2569/---.mp4', tech11: '14-8-2569/dfsa/High-Performance Belt Systems.mp4',
+    incline32: '23-7-2569/food and auto Grade solutions.mp4', rollers20: '16-9-2569/Built for Non Stop Conveyance.mp4',
+    rollers28: '2-10-2569/Worn lines Cause Constant Jamming.mp4'
+};
+const SHOTS = [
+  { at: () => 0, vid: V.belts, vz: 1.7, ar: () =>
+      dark(.6) + center(640, 'ทำไม', 90, 2) + center(790, 'เร่งสายพาน', 120, 7, OR) + center(940, 'อย่างเดียวไม่พอ?', 90, 12) },
+
+  { line: 0, vid: V.rollers28, vz: 1.7, clip0: 2.0, ar: () => tag5(540, 420, 'ผลิตไม่ทันเป้า', W(0, 'ไม่ทัน', -6), { fill: RED }) },
+
+  { line: 1, vid: V.line54, vz: 1.7, ar: () =>
+      streaks('sk1', 'M-100,900 L1180,560', W(1, 'เพิ่มความเร็ว', -4)) + tag5(540, 420, 'เพิ่มความเร็ว?', W(1, 'เพิ่มความเร็ว', -4)) },
+
+  { line: 2, vid: V.rollers53, vz: 1.7, ar: () =>
+      flow('fl2', 'M120,1000 L960,640', 0, 5, 24) + tag5(540, 420, 'ไหลเร็วขึ้น?', W(2, 'ไหล', -6)) },
+
+  { line: 3, pic: '3.png', ar: () =>
+      dark(.35) + tag5(540, 700, 'อาจไม่ได้มากขึ้น', W(3, 'ไม่ได้', -6), { fill: RED, size: 64 }) },
+
+  { line: 4, vid: V.curve55, vz: 1.7, vzo: 'bottom', ar: () => '', build: bottleneckShot },
+
+  { line: 10, vid: V.tech7, span: 1.5, ar: () => tag5(540, 420, 'ความเหมาะสมของสินค้า', W(10, 'ความเหมาะสม', -6), { size: 50 }) },
+
+  { line: 11, vid: V.rollers53, vz: 1.7, clip0: 2.5, shake: true, ar: () =>
+      tag5(540, 420, 'ไม่มั่นคง', W(11, 'ไม่มั่นคง', -4), { fill: RED }) + tag5(540, 540, 'กระแทกกัน', W(11, 'กระแทก', -4), { fill: RED }) },
+
+  { line: 12, vid: V.incline32, span: 1.4, clip0: .2, ar: () => tag5(540, 420, 'ส่งต่อมีปัญหา', W(12, 'ส่งต่อ', -6), { fill: RED }) },
+
+  { line: 13, vid: V.modular52, vz: 1.7, vzo: 'bottom', ar: () => tag5(540, 420, 'ก่อนปรับความเร็ว', W(13, 'ก่อน', -6)) },
+
+  { line: 14, vid: V.rollers20, vz: 1.7, ar: () => '', build: overviewShot },
+
+  { line: 18, vid: V.rollers28, vz: 1.7, ar: () => tag5(540, 420, 'เร็วขึ้น', W(18, 'เร็วขึ้น', -6)) },
+
+  { line: 19, vid: V.rollers20, vz: 1.7, clip0: 2.2, ar: () =>
+      tag5(540, 420, 'เร็วขึ้น', 0) + `<path data-a="draw" data-t="${W(19, 'ไม่ได้', -2)}" data-d="8" pathLength="1" d="M380,425 L700,415" stroke="${RED}" stroke-width="14" stroke-linecap="round" fill="none"/>` +
+      tag5(540, 560, 'ผลลัพธ์ไม่ได้มากขึ้นเสมอ', W(19, 'ผลลัพธ์', -4), { size: 46, fill: NAVY }) },
+
+  { line: 20, vid: V.tech11, span: 1.5, ar: () => {
+      const t = W(20, 'ถูกจุด', -8);
+      return `<g data-a="pop" data-t="${t}" data-cx="540" data-cy="760"><circle cx="540" cy="760" r="170" fill="none" stroke="#fff" stroke-width="10"/>
+          <circle cx="540" cy="760" r="105" fill="none" stroke="${OR}" stroke-width="10"/><circle cx="540" cy="760" r="38" fill="${OR}"/></g>` +
+        tag5(540, 420, 'แก้ให้ถูกจุด', t + 6, { size: 60 }); } },
+
+  { line: 21, bg: () => `<rect width="${CW}" height="${CH}" fill="url(#stripes)"/>`, still: true, ar: () => {
+      let s = '' + `<g data-a="rise" data-t="2"><rect x="70" y="330" width="940" height="800" rx="44" fill="#fff"/></g>
+        <g data-a="pop" data-t="8" data-cx="540" data-cy="470">
+          <image href="../../logo.png" x="130" y="400" width="140" height="140"/>
+          <text x="295" y="470" font-family="Kanit" font-weight="900" font-style="italic" font-size="78" fill="${NAVY}">BSS <tspan fill="${OR}">SOLUTION</tspan></text>
+          <text x="298" y="525" font-family="Kanit" font-weight="800" font-size="38" fill="${NAVY}">(1978)</text></g>`;
+      [['TEL', '02-317-5470-3'], ['MOBILE', '086-822-8787, 094-846-8667'], ['MAIL', 'sale.bss1978@gmail.com'], ['LINE', 'bss_1978']].forEach(([k, v], i) => {
+          const y = 660 + i * 112;
+          s += `<g data-a="slide" data-t="${16 + i * 6}">
+              <text x="130" y="${y}" dominant-baseline="central" font-family="Kanit" font-weight="900" font-size="30" fill="${OR}">${k}</text>
+              <text x="300" y="${y}" dominant-baseline="central" font-family="Kanit" font-weight="800" font-size="${v.length > 22 ? 40 : 48}" fill="${NAVY}">${v}</text></g>`;
+      });
+      return s; } }
+];
+
+/* ------------------------------------------------------------- scenes */
+const SCN = {
+    s1: { n: '', title: 'เร่งสายพาน?' }, s2: { n: '01', title: 'คอขวดอยู่ตรงไหน' },
+    s3: { n: '02', title: 'เร็วเกินไปก็มีปัญหา' }, s4: { n: '03', title: 'ดูภาพรวมก่อน' },
+    s5: { n: '04', title: 'ข้อคิด' }, s6: { n: '', title: 'ปรึกษาเรา' }
+};
+
+/* ------------------------------------------------------------- build */
+function build() {
+    SHOTS.forEach((s, k) => {
+        s.from = s.line === undefined ? s.at() : LN[s.line].from - 4;
+        SHOT0 = s.from; OX = s.ox === undefined ? 420 : s.ox;
+        const bg = s.bg ? s.bg() : s.pic ? pic(s.pic) : s.img ? photo(s.img) : '';
+        s.html = `<g id="shot${k}" visibility="hidden"><g id="kb${k}">${bg}</g><g id="ar${k}">${s.build ? s.build(k) : s.ar()}</g></g>`;
+    });
+    SHOTS.forEach((s, k) => { s.to = k + 1 < SHOTS.length ? SHOTS[k + 1].from : TOTAL; });
+    E('shots').innerHTML = SHOTS.map(s => s.html).join('');
+    // video shots: one muted <video> each, under the svg, seeked frame by frame
+    SHOTS.forEach((s, k) => { if (!s.vid) return;
+        const v = document.createElement('video'); v.muted = true; v.preload = 'metadata'; v.playsInline = true; v.src = LIB(s.vid);
+        v.id = 'vid' + k; E('vids').appendChild(v); s.el = v; });
+    SHOTS.forEach((s, k) => { s.nodes = [...E('ar' + k).querySelectorAll('[data-a]')]; });
+    E('top').innerHTML = TXT(70, 110, 'ทำไมเร่งสายพานอย่างเดียวไม่พอ?', 34, { sw: 0 }).replace('<text ', '<text opacity=".85" ');
+    E('avatarWrap').innerHTML = window.MASCOT.svg;
+}
+
+// once the font is in, measure each label so its bar can run under it
+let FITTED = false;
+function fitLabels() {
+    if (FITTED || document.fonts.status !== 'loaded') return;
+    document.querySelectorAll('.cbox').forEach(g => {
+        const t = g.querySelector('text'), r = g.querySelector('rect'), b = t.getBBox(), px = 18, py = 8;
+        r.setAttribute('x', (b.x - px).toFixed(1)); r.setAttribute('y', (b.y - py).toFixed(1));
+        r.setAttribute('width', (b.width + px * 2).toFixed(1)); r.setAttribute('height', (b.height + py * 2).toFixed(1));
+        // keep every box inside the frame
+        const L = b.x - px, R = b.x + b.width + px, dx = L < 40 ? 40 - L : R > 1040 ? 1040 - R : 0;
+        if (dx) g.setAttribute('transform', `translate(${dx.toFixed(1)},0)`);
+    });
+    document.querySelectorAll('.kick').forEach(g => {
+        const t = g.querySelector('text'), r = g.querySelector('.kbar'), b = t.getBBox();
+        r.setAttribute('x', b.x.toFixed(1)); r.dataset.w = b.width.toFixed(1);
+    });
+    FITTED = true;
+}
+
+/* ------------------------------------------------------------- animate */
+const LENS = {};
+function animate(k, l) {
+    for (const n of SHOTS[k].nodes) {
+        const a = n.dataset.a, t = +n.dataset.t || 0, d = +(n.dataset.d || 12), cx = +n.dataset.cx, cy = +n.dataset.cy;
+        const p = inv(l, t, t + d);
+        switch (a) {
+        case 'kick': { const q = outCubic(inv(l, t, t + 10)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(${((1 - q) * -50).toFixed(1)},0)`);
+            const r = n.querySelector('.kbar'); r.setAttribute('width', ((+r.dataset.w || 0) * outCubic(inv(l, t + 4, t + 16))).toFixed(1)); break; }
+        case 'draw': n.setAttribute('stroke-dasharray', '1 1'); n.setAttribute('stroke-dashoffset', (1 - outCubic(p)).toFixed(4)); n.setAttribute('opacity', l >= t ? 1 : 0); break;
+        case 'pop': { const s = outBack(inv(l, t, t + 11)); n.setAttribute('opacity', l >= t ? 1 : 0); n.setAttribute('transform', `translate(${cx},${cy}) scale(${Math.max(.001, s).toFixed(3)}) translate(${-cx},${-cy})`); break; }
+        case 'fade': n.setAttribute('opacity', inv(l, t, t + 10).toFixed(3)); break;
+        case 'fadeTo': n.setAttribute('opacity', (inv(l, t, t + 10) * +n.dataset.o).toFixed(3)); break;
+        case 'rise': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(0,${((1 - q) * 50).toFixed(1)})`); break; }
+        case 'slide': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(${((1 - q) * -80).toFixed(1)},0)`); break; }
+        case 'slideX': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('transform', `translate(${((1 - q) * +n.dataset.from).toFixed(1)},0)`); break; }
+        case 'along': { const path = E(n.dataset.path); if (!LENS[n.dataset.path]) LENS[n.dataset.path] = path.getTotalLength();
+            const len = LENS[n.dataset.path];
+            let q = (l - t) / d + +n.dataset.off; q -= Math.floor(q);
+            const P = path.getPointAtLength(q * len), P2 = path.getPointAtLength(Math.min(len, q * len + 2)), P1 = path.getPointAtLength(Math.max(0, q * len - 2));
+            const ang = Math.atan2(P2.y - P1.y, P2.x - P1.x) * 180 / Math.PI;
+            n.setAttribute('opacity', l >= t ? (Math.min(1, q * 6, (1 - q) * 6) * inv(l, t, t + 6)).toFixed(3) : 0);
+            n.setAttribute('transform', `translate(${P.x.toFixed(1)},${P.y.toFixed(1)}) rotate(${ang.toFixed(1)})`); break; }
+        case 'spin': n.setAttribute('opacity', inv(l, t, t + 8).toFixed(3)); n.setAttribute('transform', `rotate(${(l * 1.6).toFixed(1)} ${cx} ${cy})`); break;
+        case 'ring': { if (l < t) { n.setAttribute('opacity', 0); break; } const q = ((l - t) % 36) / 36, x = n.getAttribute('cx'), y = n.getAttribute('cy'); n.setAttribute('opacity', (1 - q).toFixed(3));
+            n.setAttribute('transform', `translate(${x},${y}) scale(${(1 + q * 1.6).toFixed(3)}) translate(${-x},${-y})`); break; }
+        case 'bpgrid': n.setAttribute('opacity', (1 - inOut(inv(l, t + d * .55, t + d))).toFixed(3)); break;
+        case 'blink': n.setAttribute('opacity', l < t ? 0 : (Math.floor((l - t) / 8) % 2 ? .35 : 1)); break;
+        case 'alarm': n.setAttribute('opacity', l < t ? 0 : (.1 + .14 * (Math.sin((l - t) * .5) * .5 + .5)).toFixed(3)); break;
+        case 'attr': n.setAttribute(n.dataset.attr, lerp(+n.dataset.from, +n.dataset.to, inOut(p)).toFixed(1)); break;
+        }
+    }
+}
+
+/* ------------------------------------------------------- camera & page */
+function shotAt(f) { for (let k = SHOTS.length - 1; k >= 0; k--) if (f >= SHOTS[k].from) return k; return 0; }
+const sceneAt = f => TL.scenes.find(s => f >= s.from && f < s.to) || TL.scenes[TL.scenes.length - 1];
+const nextShotAfter = f => SHOTS.find(s => s.from >= f);
+
+// scene changes: a navy sector sweeps round like a gauge needle, holds the
+// chapter card, then sweeps on round to uncover the new shot
+const SWEEP = 14;
+function sweepState(f) {
+    for (const sc of TL.scenes.slice(1)) {
+        const ns = nextShotAfter(sc.from), open = ns ? ns.from : sc.from;
+        if (f >= sc.from - SWEEP && f < open + SWEEP) return { sc, open };
+    }
+    return null;
+}
+function sector(a0, a1) {          // angles in turns, 0 = 12 o'clock
+    if (a1 - a0 >= .999) return `M-10,-10 H${CW + 10} V${CH + 10} H-10 Z`;
+    if (a1 - a0 <= .001) return '';
+    const cx = 540, cy = 860, R = 1400, P = a => [cx + Math.sin(a * 2 * Math.PI) * R, cy - Math.cos(a * 2 * Math.PI) * R];
+    const [x0, y0] = P(a0), [x1, y1] = P(a1);
+    return `M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${R},${R} 0 ${a1 - a0 > .5 ? 1 : 0} 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z`;
+}
+const PUNCH = 9;                    // in-scene cuts: the new shot punches in from a zoom
+let VIS = new Set();
+const CLIP0 = .3;
+function clipTime(s, l) {
+    const span = s.span || 3.8, t = Math.max(0, l) / FPS * .8, p = t % (span * 2);
+    return (s.clip0 === undefined ? CLIP0 : s.clip0) + (p < span ? p : span * 2 - p);
+}
+let SEEKS = [];
+const seekTo = (v, t) => new Promise(res => {
+    const go = () => { if (Math.abs(v.currentTime - t) < .001 && v.readyState >= 2) return res();
+        const done = () => { v.removeEventListener('seeked', done); res(); };
+        v.addEventListener('seeked', done); v.currentTime = t; };
+    if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
+});
+
+function camera(f) {
+    const k = shotAt(f), s = SHOTS[k], l = f - s.from;
+    const w = sweepState(f);
+    const sceneCut = w && s.from >= w.sc.from - 1;
+    const p = !sceneCut && k > 0 && l < PUNCH ? outCubic(l / PUNCH) : 1;
+    const show = new Set([k]);
+    for (const v of VIS) if (!show.has(v)) at('shot' + v, 'visibility', 'hidden');
+    for (const v of show) if (!VIS.has(v)) at('shot' + v, 'visibility', 'visible');
+    VIS = show;
+    animate(k, l);
+    if (s.tick) s.tick(l);
+    const dur = Math.max(1, s.to - s.from);
+    const z = (s.still ? 1 : 1.02 + .05 * (l / dur)) * (1 + (1 - p) * .35);
+    const blur = (1 - p) * 10;
+    let sx = 0, sy = 0;
+    if (s.shake && l > 6) { sx = Math.sin(l * 1.9) * 9; sy = Math.cos(l * 2.3) * 7; }
+    at('kb' + k, 'transform', `translate(${sx.toFixed(1)},${sy.toFixed(1)}) translate(540,860) scale(${z.toFixed(4)}) translate(-540,-860)`);
+    E('kb' + k).style.filter = blur > .3 ? `blur(${blur.toFixed(1)}px)` : 'none';
+    at('flash', 'opacity', (!sceneCut && k > 0 ? Math.max(0, 1 - l / 5) * .35 : 0).toFixed(3));
+    SHOTS.forEach((sh, kk) => { if (sh.el) sh.el.style.display = kk === k ? 'block' : 'none'; });
+    if (s.el) {
+        // vz: zoom from the top edge so a clip's lower caption band falls off screen
+        const vz = s.vz || 1;
+        s.el.style.transformOrigin = vz > 1 ? (s.vzo === 'bottom' ? '540px 1920px' : '540px 0px') : '540px 860px';
+        s.el.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px) scale(${(z * vz).toFixed(4)})`;
+        s.el.style.filter = blur > .3 ? `blur(${blur.toFixed(1)}px)` : 'none';
+        SEEKS.push([s.el, clipTime(s, l)]);
+    }
+    if (w) {
+        const a = inOut(inv(f, w.sc.from - SWEEP, w.sc.from)), b = inOut(inv(f, w.open, w.open + SWEEP));
+        const info = SCN[w.sc.id];
+        let html = `<path d="${sector(b, a)}" fill="${NAVY}"/>`;
+        // the needle rides the leading edge
+        const edge = a < 1 ? a : b;
+        if ((a > 0 && a < 1) || (b > 0 && b < 1)) {
+            const ang = edge * 2 * Math.PI;
+            html += `<line x1="540" y1="860" x2="${(540 + Math.sin(ang) * 1400).toFixed(1)}" y2="${(860 - Math.cos(ang) * 1400).toFixed(1)}" stroke="${OR}" stroke-width="12"/>`;
+        }
+        if (a >= 1 && b <= 0) {
+            const o = inv(f, w.sc.from, w.sc.from + 4) * (1 - inv(f, w.open - 2, w.open + 1));
+            html += `<g opacity="${o.toFixed(2)}">${info.n ? TXT(540, 700, info.n, 200, { anchor: 'middle', fill: OR, sw: 0, weight: 900 }) : ''}
+                ${TXT(540, info.n ? 850 : 780, info.title, 80, { anchor: 'middle', sw: 0, weight: 900 })}</g>`;
+        }
+        E('wipe').innerHTML = html;
+    } else E('wipe').innerHTML = '';
+}
+
+/* ------------------------------------------------------------- captions */
+// keyword list only steers the narrator's gestures now; the text is one colour
+const HOT = ['ไม่ทัน', 'ความเร็ว', 'เร็วขึ้น', 'เร่ง', '10', '6', 'สะสม', 'ความสามารถ', 'เหมาะสม', 'ไม่มั่นคง', 'กระแทก',
+    'ส่งต่อ', 'Conveyor', 'ภาพรวม', 'คอขวด', 'รองรับ', 'สัมพันธ์', 'ผลลัพธ์', 'ถูกจุด', 'บีเอสเอส', 'โซลูชั่น'];
+const SEG = new Intl.Segmenter('th', { granularity: 'word' });
+const CHUNK_MAX = 13;
+const chunkCache = {};
+function chunksOf(text) {
+    if (chunkCache[text]) return chunkCache[text];
+    const out = [];
+    for (const part of text.split(' ')) {
+        let cur = [];
+        const len = a => a.join('').length;
+        for (const { segment } of SEG.segment(part)) {
+            if (cur.length && len(cur) + segment.length > CHUNK_MAX) { out.push(cur); cur = []; }
+            cur.push(segment);
+        }
+        if (cur.length) out.push(cur);
+    }
+    const merged = [];
+    for (const c of out) { if (merged.length && c.join('').length <= 3) merged[merged.length - 1] = merged[merged.length - 1].concat(c); else merged.push(c); }
+    return (chunkCache[text] = merged);
+}
+let CAP = { key: '', start: 0, hot: false };
+function captions(f) {
+    const i = lineAt(f), el = E('capText'), box = E('cap');
+    if (i < 0 || f > LN[i].to + 8) { box.style.opacity = 0; CAP.key = ''; CAP.hot = false; return; }
+    const ln = LN[i], chunks = chunksOf(ln.text);
+    const sizes = chunks.map(c => c.join('').length), total = sizes.reduce((a, b) => a + b, 0);
+    const p = inv(f, ln.from, ln.to) * total;
+    let acc = 0, k = 0;
+    for (; k < chunks.length - 1; k++) { if (p < acc + sizes[k]) break; acc += sizes[k]; }
+    const key = i + ':' + k;
+    if (key !== CAP.key) {
+        const str = chunks[k].join('');
+        el.textContent = str;
+        CAP = { key, start: Math.round(ln.from + acc / total * (ln.to - ln.from)), hot: HOT.some(w => str.includes(w)) };
+    }
+    box.style.opacity = 1;
+    const d = Math.max(0, f - CAP.start), sc = d < 7 ? .82 + .18 * outBack(d / 7) : 1;
+    el.style.transform = `scale(${sc.toFixed(3)})`;
+}
+
+/* ------------------------------------------------------------- narrator */
+const MOOD = { s0: 'happy', s1: 'neutral', s2: 'neutral', s3: 'think', s4: 'worried', s5: 'think', s6: 'happy', s7: 'happy' };
+function narrator(f, sc) {
+    const mood = MOOD[sc.id];
+    let hop = 0;
+    for (const s of SHOTS) { const d = f - s.from; if (d >= 0 && d < 12) hop = Math.max(hop, Math.sin(d / 12 * Math.PI) * .5); }
+    let armL = 0, armR = 0;
+    if (CAP.hot) { const dd = f - CAP.start, g = dd >= 0 && dd < 24 ? Math.sin(Math.min(1, dd / 5) * Math.PI / 2) * (1 - Math.max(0, dd - 10) / 14) : 0;
+                   if (+CAP.key.split(':')[1] % 2) armL = 40 * g; else armR = 40 * g; }
+    if (mood === 'happy') { armL = Math.max(armL, 24 + Math.sin(f * .35) * 12); armR = Math.max(armR, 24 + Math.cos(f * .35) * 12); }
+    if (mood === 'worried') { armL += -4 + Math.sin(f * .9) * 1.5; armR += -4 + Math.cos(f * .9) * 1.5; }
+    if (mood === 'think') armL = Math.max(armL, 12);
+    window.MASCOT.pose(f, { talk: TL.mouth[f] || 0, hop, armL, armR, dance: mood === 'happy' && sc.id !== 's0' ? .6 : 0, enter: outCubic(inv(f, 4, 26)) });
+}
+
+async function render(f) {
+    f = clamp(Math.round(f), 0, TOTAL - 1);
+    SEEKS = [];
+    fitLabels();
+    const sc = sceneAt(f);
+    camera(f);
+    captions(f);
+    narrator(f, sc);
+    await Promise.all(SEEKS.map(([v, t]) => seekTo(v, t)));
+}
+
+build();
+render(0);
+window.__FPS = FPS; window.__TOTAL = TOTAL; window.__seek = render; window.__ready = true;
+})();
+</script>
+</body>
+</html>
