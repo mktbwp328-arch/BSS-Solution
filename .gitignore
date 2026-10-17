@@ -95,3 +95,7 @@ video/ep03/preview/
 
 # Raw photo/video library (1.8 GB, local source material for the videos)
 images/รูป+วีดีโอ/
+video/ep04/*.mp4
+video/ep04/*.wav
+video/ep04/*.log
+video/ep04/preview/
