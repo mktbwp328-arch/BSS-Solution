@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>เบื้องหลังการติดตั้ง Conveyor — 9:16</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
+<style>
+/* EP.06 "Inspection Board" 9:16. Every picture is a rounded card on the
+   brand backdrop, like photos pinned to a site report; a rail on the left
+   fills stage by stage (ออกแบบ → ติดตั้ง → ตรวจสอบ → ส่งมอบ). Labels are
+   checklist rows whose boxes tick as the line is spoken. Cuts inside a scene
+   raise a new card over the old one; scene changes land a "ผ่าน" stamp and
+   slide the card away onto the chapter title. Footage comes from the
+   company library in images/รูป+วีดีโอ/ (local-only, not in git), none of
+   it used in an earlier episode; the card shows only the middle of each
+   clip, clear of the caption bands those clips carry.
+
+   Deterministic: render(f) sets everything from the frame number.
+   Key content stays inside TikTok's safe area (y ~150–1500). */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0b2048; }
+/* footage sits in its own stacking layer under the svg */
+#bgsvg { position: absolute; inset: 0; z-index: 0; }
+#vids { position: absolute; inset: 0; z-index: 1; isolation: isolate; }
+#svg { position: absolute; inset: 0; z-index: 2; }
+/* card videos: rounded, cropped to the middle of the frame */
+#vids video { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; display: none; transform-origin: 540px 960px; }
+#cap { position: absolute; left: 40px; right: 40px; top: 1176px; text-align: center; z-index: 3; }
+/* one colour for the whole line: white on a thick navy outline */
+#capText {
+    display: inline-block; white-space: nowrap;
+    font-family: 'Kanit', sans-serif; font-weight: 800; font-size: 78px; line-height: 1.3;
+    letter-spacing: 1px; color: #fff; -webkit-text-stroke: 16px #071b45; paint-order: stroke fill;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.55));
+}
+</style>
+<script src="timeline.js"></script>
+<script src="mascot.js"></script>
+</head>
+<body>
+<svg id="bgsvg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs><linearGradient id="bgG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b2a5c"/><stop offset=".55" stop-color="#071b45"/><stop offset="1" stop-color="#050f2a"/></linearGradient>
+  <radialGradient id="glowO"><stop offset="0" stop-color="#fc8000" stop-opacity=".35"/><stop offset="1" stop-color="#fc8000" stop-opacity="0"/></radialGradient>
+  <pattern id="diag" width="44" height="44" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><rect width="2" height="44" fill="#ffffff" fill-opacity=".05"/></pattern></defs>
+  <rect width="1080" height="1920" fill="url(#bgG)"/><rect width="1080" height="1920" fill="url(#diag)"/>
+  <circle cx="980" cy="260" r="420" fill="url(#glowO)"/><circle cx="80" cy="1500" r="380" fill="url(#glowO)"/>
+  </svg>
+<div id="vids"></div>
+<svg id="svg" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="scrimT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071b45" stop-opacity=".5"/><stop offset="1" stop-color="#071b45" stop-opacity="0"/></linearGradient>
+  <linearGradient id="scrimB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071b45" stop-opacity="0"/><stop offset=".45" stop-color="#071b45" stop-opacity=".45"/><stop offset="1" stop-color="#071b45" stop-opacity=".85"/></linearGradient>
+  <pattern id="stripes" width="60" height="60" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)"><rect width="60" height="60" fill="#0b2a5c"/><rect width="26" height="60" fill="#0e3170"/></pattern>
+  <!-- horizontal motion blur for the whip-pans -->
+  <filter id="whipF" x="-10%" y="0" width="120%" height="100%"><feGaussianBlur id="whipN" stdDeviation="0 0"/></filter>
+  <filter id="whipP" x="-10%" y="0" width="120%" height="100%"><feGaussianBlur id="whipNP" stdDeviation="0 0"/></filter>
+  <filter id="sticker" x="-5%" y="-5%" width="110%" height="110%"><feMorphology in="SourceAlpha" operator="dilate" radius="5" result="fat"/><feFlood flood-color="#ffffff"/><feComposite in2="fat" operator="in" result="rim"/><feMerge><feMergeNode in="rim"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <pattern id="bp" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60,0 L0,0 L0,60" fill="none" stroke="#9cc3ff" stroke-opacity=".35" stroke-width="2"/></pattern>
+  <clipPath id="cardClip"><rect width="1080" height="1920"/></clipPath>
+  <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#000" flood-opacity=".45"/></filter>
+  <clipPath id="revealClip"><rect id="revealRect" width="0" height="1920"/></clipPath>
+  <clipPath id="halfL"><rect width="536" height="1920"/></clipPath>
+  <clipPath id="halfR"><rect x="544" width="536" height="1920"/></clipPath>
+</defs>
+<g id="shots"></g>
+<g id="scanline"></g>
+<rect width="1080" height="420" fill="url(#scrimT)"/>
+<rect y="900" width="1080" height="1020" fill="url(#scrimB)"/>
+<g id="railG"></g>
+<rect id="flash" width="1080" height="1920" fill="#fff" opacity="0"/>
+<g id="wipe"></g>
+<g id="top"></g>
+<g id="avatarWrap" transform="translate(356,1367) scale(.36)" filter="url(#sticker)"></g>
+</svg>
+<div id="cap"><span id="capText"></span></div>
+
+<script>
+(function () {
+'use strict';
+const TL = window.TL;
+const { FPS, TOTAL } = TL;
+const NAVY = '#071b45', OR = '#fc8000', RED = '#e5412d', CW = 1080, CH = 1920;
+// web name → full-resolution original (matched by image content)
+const ORIG = {
+    'roller-conveyor': 'Roller Conveyor ลูกกลิ้ง', 'conveyor-belt-line': 'สายพานลำเลียง', 'chain-conveyor': 'CHAIN CONVEYOR',
+    'pvc-conveyor-belt-system': 'ระบบสายพานลำเลียงแบบ PVC', 'conveyor-company-chonburi': 'บริษัท รับทำ conveyor ชลบุรี',
+    'conveying-system': 'ระบบลำเลียง', 'conveyor-belt-factory': 'โรงงานผลิตสายพานลำเลียง',
+    'chain-conveyor-system': 'ระบบลำเลียงแบบโซ่ Chain Conveyor', 'conveyor-belt': 'สายพานลำเลียง conveyor belt',
+    'recycling-conveyor-equipment': 'ระบบลำเลียง Recycle Equipment', 'conveyor-system': 'Conveyor',
+    'roller-conveyor-system': 'ระบบลำเลียงแบบลูกกลิ้ง (Roller Conveyor)', 'pvc-belt-conveyor': 'PVC BELT CONVEYOR',
+    'factory-shutdown-service': 'งาน shutdown โรงงาน', 'conveyor-installation-service': 'บริการติดตั้งสายพานลำเลียง'
+};
+// photos EP.02 did not use: the general web images (works/), plus the one
+// company original EP.02 left out
+const IMG = n => ORIG[n] && n === 'conveyor-installation-service' ? encodeURI(`../../images/BSS/${ORIG[n]}.png`) : `../../images/works/${n}.jpg`;
+
+/* ------------------------------------------------------------- helpers */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const inv = (f, a, b) => clamp((f - a) / (b - a), 0, 1);
+const lerp = (a, b, t) => a + (b - a) * t;
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+const outBack = t => { if (t <= 0) return 0; if (t >= 1) return 1; const c = 2.2; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const inOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const els = {};
+const E = id => els[id] || (els[id] = document.getElementById(id));
+const at = (id, k, v) => { const e = E(id); if (e) e.setAttribute(k, v); };
+const lineAt = f => { for (let i = TL.lines.length - 1; i >= 0; i--) if (f >= TL.lines[i].from) return i; return -1; };
+const LN = TL.lines;
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+/* -------------------------------------------------- overlay vocabulary
+   Every overlay element carries data-a (how it animates) and data-t (frames
+   after the shot starts). animate() drives them; builders only place them. */
+let SHOT0 = 0;
+// frame offset, inside the current shot, of a word in line k
+const W = (k, word, lead = 0) => {
+    const l = LN[k], i = word ? Math.max(0, l.text.indexOf(word)) : 0;
+    return Math.round(l.from + i / l.text.length * (l.to - l.from)) - SHOT0 + lead;
+};
+const TXT = (x, y, s, size, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.anchor || 'start'}" dominant-baseline="central" font-family="Kanit" font-weight="${o.weight || 800}" font-size="${size}" fill="${o.fill || '#fff'}" stroke="${o.stroke || NAVY}" stroke-width="${o.sw === undefined ? size * .2 : o.sw}" stroke-linejoin="round" paint-order="stroke fill">${esc(s)}</text>`;
+// the label: a word or two in white, an orange bar drawing in underneath
+function kick(x, y, text, t, o = {}) {
+    const { size = 64, anchor = 'start', bar = OR } = o;
+    return `<g data-a="kick" data-t="${t}" class="kick" data-anchor="${anchor}">
+        <rect class="kbar" x="${x}" y="${y + size * .52}" width="0" height="${Math.round(size * .16)}" rx="${Math.round(size * .08)}" fill="${bar}"/>
+        ${TXT(x, y, text, size, { anchor })}</g>`;
+}
+// a red line struck through a label
+const strike = (x1, y, x2, t) => `<path data-a="draw" data-t="${t}" data-d="8" pathLength="1" d="M${x1},${y} L${x2},${y - 10}" stroke="${RED}" stroke-width="14" stroke-linecap="round" fill="none"/>`;
+function badge(x, y, t, ok = true) {
+    const col = ok ? OR : RED;
+    const mark = ok ? `<path d="M${x - 17},${y + 1} L${x - 5},${y + 14} L${x + 19},${y - 13}" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`
+                    : `<path d="M${x - 14},${y - 14} L${x + 14},${y + 14} M${x + 14},${y - 14} L${x - 14},${y + 14}" stroke="#fff" stroke-width="10" stroke-linecap="round"/>`;
+    return `<g data-a="pop" data-t="${t}" data-cx="${x}" data-cy="${y}"><circle cx="${x}" cy="${y}" r="38" fill="${col}" stroke="#fff" stroke-width="6"/>${mark}</g>`;
+}
+// chevrons travelling along a path (direction / speed)
+function flow(id, d, t, n = 4, dur = 70) {
+    let s = `<path id="${id}" d="${d}" fill="none" stroke="none"/>`;
+    for (let i = 0; i < n; i++)
+        s += `<g data-a="along" data-t="${t}" data-path="${id}" data-off="${i / n}" data-d="${dur}"><path d="M-16,-26 L14,0 L-16,26" fill="none" stroke="${NAVY}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/><path d="M-16,-26 L14,0 L-16,26" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    return s;
+}
+// a route traced on top of the machine
+const trace = (d, t, dur = 24) => `<path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="${NAVY}" stroke-width="20" stroke-linecap="round" stroke-opacity=".6"/>
+    <path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="${OR}" stroke-width="10" stroke-linecap="round"/>`;
+// the company photo/video library (local-only, not in git)
+const LIB = rel => encodeURI('../../images/รูป+วีดีโอ/BSS/' + rel);
+// a still from the library, cover-fitted to the frame (or to a box)
+const pic = (rel, x = 0, w = CW) => `<image href="${LIB(rel)}" x="${x}" y="0" width="${w}" height="${CH}" preserveAspectRatio="xMidYMid slice"/>`;
+let OX = 420;
+const photo = (n, ox = OX, extra = '') => `<image href="${IMG(n)}" x="${-ox}" y="0" width="1920" height="1920" preserveAspectRatio="xMidYMid slice" ${extra}/>`;
+const dark = (o, t = 0) => `<rect data-a="fadeTo" data-t="${t}" data-o="${o}" width="${CW}" height="${CH}" fill="${NAVY}"/>`;
+// split frame: two photos, each centred on its own subject, with a VS badge
+function vs(a, b, labA, labB, t1, t2) {
+    return `<g data-a="slideX" data-t="0" data-from="-560">${pic(a, 0, 536)}</g>
+        <g data-a="slideX" data-t="0" data-from="560">${pic(b, 544, 536)}</g>
+        <rect data-a="fade" data-t="6" x="536" y="0" width="8" height="1920" fill="#fff"/>
+        <g data-a="pop" data-t="10" data-cx="540" data-cy="700"><circle cx="540" cy="700" r="66" fill="${OR}" stroke="#fff" stroke-width="8"/>
+          <text x="540" y="702" text-anchor="middle" dominant-baseline="central" font-family="Kanit" font-weight="900" font-style="italic" font-size="60" fill="#fff">VS</text></g>` +
+        kick(268, 1010, labA, t1, { size: 54, anchor: 'middle' }) + kick(812, 1010, labB, t2, { size: 54, anchor: 'middle' });
+}
+// three small cards in a row (conveyor types)
+function cards(list, t) {
+    return list.map(([img, label], i) => {
+        const x = 200 + i * 340, y = 700, r = [-4, 2, 5][i];
+        return `<g data-a="pop" data-t="${t + i * 8}" data-cx="${x}" data-cy="${y}"><g transform="rotate(${r} ${x} ${y})">
+            <rect x="${x - 150}" y="${y - 170}" width="300" height="370" rx="18" fill="#fff"/>
+            <image href="${LIB(img)}" x="${x - 134}" y="${y - 154}" width="268" height="268" preserveAspectRatio="xMidYMid slice"/>
+            <text x="${x}" y="${y + 162}" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="40" fill="${NAVY}">${label}</text></g></g>`;
+    }).join('');
+}
+const PATTERN = () => `<rect width="${CW}" height="${CH}" fill="url(#stripes)"/>`;
+
+/* ----------------------------------------------------- inspection card
+   EP.06 shows every picture as a rounded card on the brand backdrop, the
+   way a site report pins photos to a board. Overlays are checklist rows
+   whose boxes tick as the line is spoken. */
+// full frame: the "card" is the whole screen
+const CARD = { x: 0, y: 0, w: 1080, h: 1920, r: 0 };
+// a still inside the card; pos picks which part of the photo shows
+// website stills (images/), no text on any of them
+const R = n => `../../images/${n}`;
+const picCard = (rel, pos = 'xMidYMid') => `<image href="${rel.startsWith("../") ? rel : LIB(rel)}" x="${CARD.x}" y="${CARD.y}" width="${CARD.w}" height="${CARD.h}" preserveAspectRatio="${pos} slice" clip-path="url(#cardClip)"/>`;
+// a checklist row: white strip, a box that ticks (or warns), the words
+function row(x, y, text, t, o = {}) {
+    const { warn = false, w = 640, size = 44 } = o, col = warn ? RED : OR, h = 84;
+    const mark = warn
+        ? `<path d="M${x + 30},${y - 16} L${x + 30},${y + 6} M${x + 30},${y + 18} L${x + 30},${y + 20}" stroke="#fff" stroke-width="9" stroke-linecap="round"/>`
+        : `<path d="M${x + 16},${y + 1} L${x + 27},${y + 13} L${x + 46},${y - 12}" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`;
+    return `<g data-a="slide" data-t="${t}">
+        <rect x="${x - 14}" y="${y - h / 2}" width="${w}" height="${h}" rx="18" fill="#fff" fill-opacity=".95"/>
+        <rect x="${x}" y="${y - 30}" width="60" height="60" rx="12" fill="none" stroke="${NAVY}" stroke-width="5"/>
+        ${TXT(x + 84, y, text, size, { fill: NAVY, sw: 0 })}</g>
+      <g data-a="pop" data-t="${t + 10}" data-cx="${x + 30}" data-cy="${y}"><rect x="${x}" y="${y - 30}" width="60" height="60" rx="12" fill="${col}"/>${mark}</g>`;
+}
+// a short heading strip pinned to the card's top-left corner
+const pinLabel = (text, t, fill = NAVY) => `<g data-a="slide" data-t="${t}">
+    <rect x="104" y="257" width="${Math.max(260, text.length * 36 + 70)}" height="86" rx="16" fill="${fill}" stroke="#fff" stroke-width="4"/>
+    ${TXT(140, 300, text, 50, { sw: 0, weight: 900 })}</g>`;
+const darkCard = o => `<rect width="${CARD.w}" height="${CARD.h}" x="${CARD.x}" y="${CARD.y}" rx="${CARD.r}" fill="${NAVY}" opacity="${o}"/>`;
+const RX = 70, RY = 1050;            // rows stack upward from just above the captions   // rows stack upward from the card's lower edge
+
+/* ------------------------------------------------------------- shots
+   vid = library clip (text-free middle of the frame, which is all the card
+   shows); pos = which part of the frame the card shows. */
+const V = {
+    hall: '24-9-2569/Rigid Structutal Architecture.mp4', plasma: 'อัพแล้ว/automation.mp4',
+    stacked: '15-7-2569/Your Partner Beyond Delivery.mp4', boxes: '15-7-2569/End Production Bottlenecks Today.mp4',
+    team: '12-5-2569/Defeat monsoon moisture today.mp4', warehouse: '2-10-2569/Achieve Zero Unplanned Downtime.mp4',
+    robot: '23-7-2569/Seamless Automation Integration.mp4', incline: '16-9-2569/Stop Production Bottlenecks Cold.mp4',
+    workshop: '24-9-2569/Zero Bottlenecks Pure OutPut.mp4', workers: 'อัพแล้ว/Boost production.mp4',
+    greenBelt: 'อัพแล้ว/Bespoke belt systems.mp4', screw: '21-8-2569/Custom-Engineered Components.mp4'
+};
+const SHOTS = [
+  { at: () => 0, pic: R('factory.png'), ar: () =>
+      darkCard(.62) +
+      `<g data-a="rise" data-t="2">${TXT(540, 700, 'เบื้องหลัง', 92, { anchor: 'middle', sw: 0, weight: 900 })}</g>
+       <g data-a="rise" data-t="7">${TXT(540, 840, 'การติดตั้ง', 120, { anchor: 'middle', fill: OR, sw: 0, weight: 900 })}</g>
+       <g data-a="rise" data-t="12">${TXT(540, 980, 'Conveyor', 104, { anchor: 'middle', sw: 0, weight: 900 })}</g>` },
+
+  { line: 0, pic: R('article_belts_101.png'), ar: () => row(RX, RY, 'ออกแบบเสร็จ', W(0, 'เสร็จ', -6)) },
+
+  { line: 1, pic: R('warehouse_agv.png'), ppos: 'xMinYMid', ar: () => row(RX, RY, 'ยกเข้าไปติดตั้ง', W(1, 'ยกเครื่อง', -6)) },
+
+  { line: 2, pic: R('sorting_system.png'), ar: () => row(RX, RY, 'เปิดใช้งานได้เลย?', W(2, 'เปิด', -6), { warn: true }) },
+
+  { line: 3, pic: 'ChatGPT Image 14 ส.ค. 2569 09_45_00.png', ar: () =>
+      pinLabel('สำคัญไม่แพ้การออกแบบ', W(3, 'สำคัญ', -6), OR) },
+
+  { line: 4, pic: R('article_roller_guide.png'), ar: () => pinLabel('หน้างานจริง', W(4, 'หน้างาน', -6)) },
+
+  { line: 5, pic: R('conveyor_food.png'), ar: () => row(RX, RY, 'ตรงกับเครื่องจักรเดิม', W(5, 'ตรงกับ', -4)) },
+
+  { line: 6, pic: R('article_belts_101.png'), ppos: 'xMinYMid', ar: () =>
+      row(RX, RY - 104, 'ตรงกับเครื่องจักรเดิม', 0) + row(RX, RY, 'ระดับความสูงตามแบบ', W(6, 'ระดับ', -4)) },
+
+  { line: 7, pic: R('heavy_duty.png'), ar: () =>
+      row(RX, RY - 208, 'ตรงกับเครื่องจักรเดิม', 0) + row(RX, RY - 104, 'ระดับความสูงตามแบบ', 0) + row(RX, RY, 'โครงสร้างมั่นคง', W(7, 'โครงสร้าง', -4)) },
+
+  { line: 8, pic: R('warehouse_agv.png'), ar: () =>
+      row(RX, RY - 312, 'ตรงกับเครื่องจักรเดิม', 0) + row(RX, RY - 208, 'ระดับความสูงตามแบบ', 0) + row(RX, RY - 104, 'โครงสร้างมั่นคง', 0) +
+      row(RX, RY, 'พื้นที่ทำงานปลอดภัย', W(8, 'พื้นที่', -4)) },
+
+  { line: 9, pic: R('article_maintenance.png'), ar: () => pinLabel('ตรวจสอบระบบ', W(9, 'ตรวจสอบ', -6)) },
+
+  { line: 10, vid: V.screw, ar: () =>
+      row(RX, RY - 104, 'การเดินสายพาน', W(10, 'เดินสายพาน', -4)) + row(RX, RY, 'การทำงานของมอเตอร์', W(10, 'มอเตอร์', -4)) },
+
+  { line: 11, pic: R('sorting_system.png'), ppos: 'xMaxYMid', ar: () =>
+      row(RX, RY - 104, 'การรับส่งสินค้า', W(11, 'รับส่ง', -4)) + row(RX, RY, 'จุดเชื่อมต่อ', W(11, 'จุดเชื่อมต่อ', -4)) },
+
+  { line: 12, pic: R('recycling.png'), ar: () => row(RX, RY, 'ทำงานตามแบบ', W(12, 'ตามที่', -4)) },
+
+  { line: 13, pic: 'ChatGPT Image 14 ส.ค. 2569 09_45_00.png', ar: () =>
+      row(RX, RY - 104, 'เจอจุดต้องปรับ', W(13, 'ต้องปรับ', -4), { warn: true }) + row(RX, RY, 'แก้ไขก่อนส่งมอบ', W(13, 'แก้ไข', -4)) },
+
+  { line: 14, pic: R('article_roller_guide.png'), ppos: 'xMaxYMid', ar: () => pinLabel('พร้อมใช้งานจริง', W(14, 'พร้อม', -6), OR) },
+
+  { line: 15, pic: R('conveyor_food.png'), ppos: 'xMinYMid', ar: () => row(RX, RY, 'ตำแหน่งถูกต้อง', W(15, 'ตำแหน่ง', -4)) },
+
+  { line: 16, pic: R('factory.png'), ppos: 'xMaxYMid', ar: () =>
+      row(RX, RY - 104, 'ตำแหน่งถูกต้อง', 0) + row(RX, RY, 'ทำงานร่วมกับการผลิต', W(16, 'ทำงานร่วม', -4)) },
+
+  { line: 17, pic: R('article_maintenance.png'), ppos: 'xMinYMid', ar: () => pinLabel('ไม่ใช่แค่ติดตั้งให้เสร็จ', W(17, 'ไม่ใช่', -6)) },
+
+  { line: 18, pic: R('hero.png'), ar: () =>
+      row(RX, RY - 104, 'ใช้งานได้จริง', W(18, 'ใช้งานได้จริง', -4)) + row(RX, RY, 'ตอบโจทย์ลูกค้า', W(18, 'ตอบโจทย์', -4)) },
+
+  { line: 19, bg: () => '', still: true, ar: () => {
+      let s = `<g data-a="rise" data-t="2"><rect x="90" y="330" width="900" height="780" rx="44" fill="#fff"/></g>
+        <g data-a="pop" data-t="8" data-cx="570" data-cy="470">
+          <image href="../../logo.png" x="170" y="400" width="140" height="140"/>
+          <text x="335" y="470" font-family="Kanit" font-weight="900" font-style="italic" font-size="74" fill="${NAVY}">BSS <tspan fill="${OR}">SOLUTION</tspan></text>
+          <text x="338" y="525" font-family="Kanit" font-weight="800" font-size="38" fill="${NAVY}">(1978)</text></g>`;
+      [['TEL', '02-317-5470-3'], ['MOBILE', '086-822-8787, 094-846-8667'], ['MAIL', 'sale.bss1978@gmail.com'], ['LINE', 'bss_1978']].forEach(([k, v], i) => {
+          const y = 660 + i * 112;
+          s += `<g data-a="slide" data-t="${16 + i * 6}">
+              <text x="170" y="${y}" dominant-baseline="central" font-family="Kanit" font-weight="900" font-size="30" fill="${OR}">${k}</text>
+              <text x="330" y="${y}" dominant-baseline="central" font-family="Kanit" font-weight="800" font-size="${v.length > 22 ? 38 : 46}" fill="${NAVY}">${v}</text></g>`;
+      });
+      return s; } }
+];
+
+/* ------------------------------------------------------------- scenes */
+const SCN = {
+    s1: { n: '', title: 'เบื้องหลังการติดตั้ง' }, s2: { n: '01', title: 'ตรวจหน้างาน' },
+    s3: { n: '02', title: 'ทดสอบก่อนส่งมอบ' }, s4: { n: '03', title: 'เป้าหมายจริง' },
+    s5: { n: '04', title: 'งานติดตั้งที่ดี' }, s6: { n: '', title: 'ปรึกษาเรา' }
+};
+// the four stages on the left rail, and which scene lights which stage
+const STAGES = ['ออกแบบ', 'ติดตั้ง', 'ตรวจสอบ', 'ส่งมอบ'];
+const STAGE_OF = { s0: 0, s1: 0, s2: 1, s3: 2, s4: 3, s5: 3, s6: 4 };
+
+/* ------------------------------------------------------------- build */
+function build() {
+    SHOTS.forEach((s, k) => {
+        s.from = s.line === undefined ? s.at() : LN[s.line].from - 4;
+        SHOT0 = s.from; OX = s.ox === undefined ? 420 : s.ox;
+        const bg = s.bg ? s.bg() : s.pic ? picCard(s.pic, s.ppos) : '';
+        // stills get a card base (and shadow) in the svg; a video card is the <video> itself, so only the frame line is drawn over it
+        const base = s.vid ? '' : `<rect x="${CARD.x}" y="${CARD.y}" width="${CARD.w}" height="${CARD.h}" rx="${CARD.r}" fill="#0b2048" filter="url(#cardShadow)"/>`;
+        s.html = `<g id="shot${k}" visibility="hidden">${base}<g clip-path="url(#cardClip)"><g id="kb${k}">${bg}</g></g><rect id="frame${k}" x="${CARD.x}" y="${CARD.y}" width="${CARD.w}" height="${CARD.h}" rx="${CARD.r}" fill="none" stroke="#fff" stroke-width="8"/><g id="ar${k}">${s.build ? s.build(k) : s.ar()}</g></g>`;
+    });
+    SHOTS.forEach((s, k) => { s.to = k + 1 < SHOTS.length ? SHOTS[k + 1].from : TOTAL; });
+    E('shots').innerHTML = SHOTS.map(s => s.html).join('');
+    // video shots: one muted <video> each, under the svg, seeked frame by frame
+    SHOTS.forEach((s, k) => { if (!s.vid) return;
+        const v = document.createElement('video'); v.muted = true; v.preload = 'metadata'; v.playsInline = true; v.src = LIB(s.vid);
+        v.id = 'vid' + k; E('vids').appendChild(v); s.el = v; });
+    SHOTS.forEach((s, k) => { s.nodes = [...E('ar' + k).querySelectorAll('[data-a]')]; });
+    E('top').innerHTML = TXT(110, 110, 'เบื้องหลังการติดตั้ง Conveyor', 34, { sw: 0 }).replace('<text ', '<text opacity=".85" ');
+    // the stage rail
+    let rl = `<rect x="58" y="330" width="8" height="760" rx="4" fill="#24427c"/><rect id="railFill" x="58" y="330" width="8" height="0" rx="4" fill="${OR}"/>`;
+    STAGES.forEach((n, i) => { const y = 330 + i * 253;
+        rl += `<circle id="rd${i}" cx="62" cy="${y}" r="17" stroke-width="6"/><text id="rt${i}" transform="translate(30,${y}) rotate(-90)" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="24">${n}</text>`; });
+    E('railG').innerHTML = rl;
+    E('avatarWrap').innerHTML = window.MASCOT.svg;
+}
+
+// once the font is in, measure each label so its bar can run under it
+let FITTED = false;
+function fitLabels() {
+    if (FITTED || document.fonts.status !== 'loaded') return;
+    document.querySelectorAll('.cbox').forEach(g => {
+        const t = g.querySelector('text'), r = g.querySelector('rect'), b = t.getBBox(), px = 18, py = 8;
+        r.setAttribute('x', (b.x - px).toFixed(1)); r.setAttribute('y', (b.y - py).toFixed(1));
+        r.setAttribute('width', (b.width + px * 2).toFixed(1)); r.setAttribute('height', (b.height + py * 2).toFixed(1));
+        // keep every box inside the frame
+        const L = b.x - px, R = b.x + b.width + px, dx = L < 40 ? 40 - L : R > 1040 ? 1040 - R : 0;
+        if (dx) g.setAttribute('transform', `translate(${dx.toFixed(1)},0)`);
+    });
+    document.querySelectorAll('.kick').forEach(g => {
+        const t = g.querySelector('text'), r = g.querySelector('.kbar'), b = t.getBBox();
+        r.setAttribute('x', b.x.toFixed(1)); r.dataset.w = b.width.toFixed(1);
+    });
+    FITTED = true;
+}
+
+/* ------------------------------------------------------------- animate */
+const LENS = {};
+function animate(k, l) {
+    for (const n of SHOTS[k].nodes) {
+        const a = n.dataset.a, t = +n.dataset.t || 0, d = +(n.dataset.d || 12), cx = +n.dataset.cx, cy = +n.dataset.cy;
+        const p = inv(l, t, t + d);
+        switch (a) {
+        case 'kick': { const q = outCubic(inv(l, t, t + 10)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(${((1 - q) * -50).toFixed(1)},0)`);
+            const r = n.querySelector('.kbar'); r.setAttribute('width', ((+r.dataset.w || 0) * outCubic(inv(l, t + 4, t + 16))).toFixed(1)); break; }
+        case 'draw': n.setAttribute('stroke-dasharray', '1 1'); n.setAttribute('stroke-dashoffset', (1 - outCubic(p)).toFixed(4)); n.setAttribute('opacity', l >= t ? 1 : 0); break;
+        case 'pop': { const s = outBack(inv(l, t, t + 11)); n.setAttribute('opacity', l >= t ? 1 : 0); n.setAttribute('transform', `translate(${cx},${cy}) scale(${Math.max(.001, s).toFixed(3)}) translate(${-cx},${-cy})`); break; }
+        case 'fade': n.setAttribute('opacity', inv(l, t, t + 10).toFixed(3)); break;
+        case 'fadeTo': n.setAttribute('opacity', (inv(l, t, t + 10) * +n.dataset.o).toFixed(3)); break;
+        case 'rise': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(0,${((1 - q) * 50).toFixed(1)})`); break; }
+        case 'slide': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(${((1 - q) * -80).toFixed(1)},0)`); break; }
+        case 'slideX': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('transform', `translate(${((1 - q) * +n.dataset.from).toFixed(1)},0)`); break; }
+        case 'along': { const path = E(n.dataset.path); if (!LENS[n.dataset.path]) LENS[n.dataset.path] = path.getTotalLength();
+            const len = LENS[n.dataset.path];
+            let q = (l - t) / d + +n.dataset.off; q -= Math.floor(q);
+            const P = path.getPointAtLength(q * len), P2 = path.getPointAtLength(Math.min(len, q * len + 2)), P1 = path.getPointAtLength(Math.max(0, q * len - 2));
+            const ang = Math.atan2(P2.y - P1.y, P2.x - P1.x) * 180 / Math.PI;
+            n.setAttribute('opacity', l >= t ? (Math.min(1, q * 6, (1 - q) * 6) * inv(l, t, t + 6)).toFixed(3) : 0);
+            n.setAttribute('transform', `translate(${P.x.toFixed(1)},${P.y.toFixed(1)}) rotate(${ang.toFixed(1)})`); break; }
+        case 'spin': n.setAttribute('opacity', inv(l, t, t + 8).toFixed(3)); n.setAttribute('transform', `rotate(${(l * 1.6).toFixed(1)} ${cx} ${cy})`); break;
+        case 'ring': { if (l < t) { n.setAttribute('opacity', 0); break; } const q = ((l - t) % 36) / 36, x = n.getAttribute('cx'), y = n.getAttribute('cy'); n.setAttribute('opacity', (1 - q).toFixed(3));
+            n.setAttribute('transform', `translate(${x},${y}) scale(${(1 + q * 1.6).toFixed(3)}) translate(${-x},${-y})`); break; }
+        case 'bpgrid': n.setAttribute('opacity', (1 - inOut(inv(l, t + d * .55, t + d))).toFixed(3)); break;
+        case 'blink': n.setAttribute('opacity', l < t ? 0 : (Math.floor((l - t) / 8) % 2 ? .35 : 1)); break;
+        case 'alarm': n.setAttribute('opacity', l < t ? 0 : (.1 + .14 * (Math.sin((l - t) * .5) * .5 + .5)).toFixed(3)); break;
+        case 'attr': n.setAttribute(n.dataset.attr, lerp(+n.dataset.from, +n.dataset.to, inOut(p)).toFixed(1)); break;
+        }
+    }
+}
+
+/* ------------------------------------------------------- camera & page */
+function shotAt(f) { for (let k = SHOTS.length - 1; k >= 0; k--) if (f >= SHOTS[k].from) return k; return 0; }
+const sceneAt = f => TL.scenes.find(s => f >= s.from && f < s.to) || TL.scenes[TL.scenes.length - 1];
+const nextShotAfter = f => SHOTS.find(s => s.from >= f);
+
+// scene changes: a "ผ่าน" stamp lands on the card, the card slides away
+// left, the chapter title sits on the backdrop, then the next card rises
+const STAMP = 12, EXIT = 10;
+function chapterState(f) {
+    for (const sc of TL.scenes.slice(1)) {
+        const ns = nextShotAfter(sc.from), open = ns ? ns.from : sc.from;
+        if (f >= sc.from - STAMP - EXIT && f < open) return { sc, open };
+    }
+    return null;
+}
+const RISE = 11;                     // in-scene cuts: the new card rises over the old one
+let VIS = new Set();
+const CLIP0 = .3;
+function clipTime(s, l) {
+    const span = s.span || 3.8, t = Math.max(0, l) / FPS * .8, p = t % (span * 2);
+    return (s.clip0 === undefined ? CLIP0 : s.clip0) + (p < span ? p : span * 2 - p);
+}
+let SEEKS = [];
+const seekTo = (v, t) => new Promise(res => {
+    const go = () => { if (Math.abs(v.currentTime - t) < .001 && v.readyState >= 2) return res();
+        const done = () => { v.removeEventListener('seeked', done); res(); };
+        v.addEventListener('seeked', done); v.currentTime = t; };
+    if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
+});
+// one transform for a card (svg group and its video alike)
+function placeCard(kk, dx, dy, sc, dim) {
+    const sh = SHOTS[kk], cx = CARD.x + CARD.w / 2, cy = CARD.y + CARD.h / 2;
+    const tf = `translate(${dx.toFixed(1)},${dy.toFixed(1)}) translate(${cx},${cy}) scale(${sc.toFixed(4)}) translate(${-cx},${-cy})`;
+    at('shot' + kk, 'transform', tf);
+    if (sh.el) {
+        sh.el.style.transform = `translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px) scale(${sc.toFixed(4)})`;
+        sh.el.style.filter = dim > .01 ? `brightness(${(1 - dim * .55).toFixed(2)})` : 'none';
+    }
+    at('frame' + kk, 'opacity', 1);
+}
+function camera(f) {
+    const k = shotAt(f), s = SHOTS[k], l = f - s.from;
+    const ch = chapterState(f);
+    const sceneCut = ch && s.from >= ch.sc.from - 1;
+    const rise = k > 0 && l < RISE ? outCubic(l / RISE) : 1;
+    const show = new Set([k]);
+    if (rise < 1 && !sceneCut) show.add(k - 1);
+    // leaving at a scene change: stamp, then slide out left
+    let exit = 0, stamp = 0, inChapter = false;
+    if (ch && f < ch.sc.from) {
+        stamp = inv(f, ch.sc.from - STAMP - EXIT, ch.sc.from - EXIT);
+        exit = inOut(inv(f, ch.sc.from - EXIT, ch.sc.from));
+    } else if (ch && f >= ch.sc.from && f < ch.open) inChapter = true;
+    for (const v of VIS) if (!show.has(v)) at('shot' + v, 'visibility', 'hidden');
+    for (const v of show) if (!VIS.has(v)) at('shot' + v, 'visibility', 'visible');
+    VIS = show;
+    if (inChapter) { at('shot' + k, 'visibility', 'hidden'); VIS.delete(k); }
+    animate(k, l);
+    if (show.has(k - 1)) animate(k - 1, f - SHOTS[k - 1].from);
+    SHOTS.forEach((sh, kk) => {
+        if (!sh.el) return;
+        sh.el.style.display = show.has(kk) && !(inChapter && kk === k) ? 'block' : 'none';
+        sh.el.style.zIndex = kk === k ? 2 : 1;
+    });
+    const dur = Math.max(1, s.to - s.from), drift = s.still ? 1 : 1 + .04 * (l / dur);
+    // the old card sinks back while the new one rises over it
+    if (show.has(k - 1)) placeCard(k - 1, 0, -30 * rise, 1 - .06 * rise, rise);
+    placeCard(k, -1150 * exit, sceneCut ? (1 - rise) * 1100 : (1 - rise) * 1100, 1, 0);
+    // the slow push-in happens on the picture inside the card
+    at('kb' + k, 'transform', `translate(540,960) scale(${drift.toFixed(4)}) translate(-540,-960)`);
+    if (s.el) {
+        s.el.style.objectPosition = s.pos || '50% 50%';
+        s.el.style.transform += ` scale(${drift.toFixed(4)})`;
+        SEEKS.push([s.el, clipTime(s, l)]);
+    }
+    if (show.has(k - 1) && SHOTS[k - 1].el) SEEKS.push([SHOTS[k - 1].el, clipTime(SHOTS[k - 1], f - SHOTS[k - 1].from)]);
+    // stamp
+    let html = '';
+    if (stamp > 0 && exit < 1) {
+        const p = stamp, sc = p < .45 ? 2.4 - 1.5 * (p / .45) : .9 + .1 * outCubic((p - .45) / .55), dx = -1150 * exit;
+        html += `<g transform="translate(${(800 + dx).toFixed(1)},560) rotate(-14) scale(${sc.toFixed(3)})" opacity="${Math.min(1, p * 3).toFixed(2)}">
+            <circle r="118" fill="none" stroke="${OR}" stroke-width="14"/><circle r="96" fill="none" stroke="${OR}" stroke-width="5"/>
+            ${TXT(0, -6, 'ผ่าน', 70, { anchor: 'middle', fill: OR, sw: 0, weight: 900 })}
+            <path d="M-34,44 L-10,66 L38,22" fill="none" stroke="${OR}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    }
+    if (inChapter) {
+        const info = SCN[ch.sc.id], o = inv(f, ch.sc.from, ch.sc.from + 5) * (1 - inv(f, ch.open - 3, ch.open));
+        html += `<g opacity="${o.toFixed(2)}">${info.n ? TXT(540, 700, info.n, 210, { anchor: 'middle', fill: OR, sw: 0, weight: 900 }) : ''}
+            ${TXT(540, info.n ? 860 : 780, info.title, 84, { anchor: 'middle', sw: 0, weight: 900 })}</g>`;
+    }
+    E('wipe').innerHTML = html;
+    rail(f);
+}
+// left rail: four stage dots, filled as the story reaches each stage
+function rail(f) {
+    const sc = sceneAt(f), cur = STAGE_OF[sc.id] === undefined ? 0 : STAGE_OF[sc.id];
+    STAGES.forEach((_, i) => {
+        const done = i < cur, on = i === cur;
+        at('rd' + i, 'fill', done ? OR : on ? '#fff' : 'none');
+        at('rd' + i, 'stroke', done || on ? OR : '#5a7bb8');
+        at('rt' + i, 'fill', done || on ? '#fff' : '#6f8cc4');
+    });
+    const seg = (cur + (cur < 4 ? .0 : 0)) / 3;
+    at('railFill', 'height', (clamp(seg, 0, 1) * 760).toFixed(1));
+}
+
+/* ------------------------------------------------------------- captions */
+// keyword list only steers the narrator's gestures now; the text is one colour
+const HOT = ['Conveyor', 'ติดตั้ง', 'สำคัญ', 'หน้างาน', 'ตำแหน่ง', 'ความสูง', 'โครงสร้าง', 'ปลอดภัย', 'ตรวจสอบ', 'สายพาน',
+    'มอเตอร์', 'รับส่ง', 'เชื่อมต่อ', 'แก้ไข', 'ส่งมอบ', 'พร้อม', 'กระบวนการผลิต', 'ใช้งานได้จริง', 'ตอบโจทย์', 'บีเอสเอส', 'โซลูชั่น'];
+const SEG = new Intl.Segmenter('th', { granularity: 'word' });
+const CHUNK_MAX = 13;
+const chunkCache = {};
+function chunksOf(text) {
+    if (chunkCache[text]) return chunkCache[text];
+    const out = [];
+    for (const part of text.split(' ')) {
+        let cur = [];
+        const len = a => a.join('').length;
+        for (const { segment } of SEG.segment(part)) {
+            if (cur.length && len(cur) + segment.length > CHUNK_MAX) { out.push(cur); cur = []; }
+            cur.push(segment);
+        }
+        if (cur.length) out.push(cur);
+    }
+    const merged = [];
+    for (const c of out) { if (merged.length && c.join('').length <= 3) merged[merged.length - 1] = merged[merged.length - 1].concat(c); else merged.push(c); }
+    return (chunkCache[text] = merged);
+}
+let CAP = { key: '', start: 0, hot: false };
+function captions(f) {
+    const i = lineAt(f), el = E('capText'), box = E('cap');
+    if (i < 0 || f > LN[i].to + 8) { box.style.opacity = 0; CAP.key = ''; CAP.hot = false; return; }
+    const ln = LN[i], chunks = chunksOf(ln.text);
+    const sizes = chunks.map(c => c.join('').length), total = sizes.reduce((a, b) => a + b, 0);
+    const p = inv(f, ln.from, ln.to) * total;
+    let acc = 0, k = 0;
+    for (; k < chunks.length - 1; k++) { if (p < acc + sizes[k]) break; acc += sizes[k]; }
+    const key = i + ':' + k;
+    if (key !== CAP.key) {
+        const str = chunks[k].join('');
+        el.textContent = str;
+        CAP = { key, start: Math.round(ln.from + acc / total * (ln.to - ln.from)), hot: HOT.some(w => str.includes(w)) };
+    }
+    box.style.opacity = 1;
+    const d = Math.max(0, f - CAP.start), sc = d < 7 ? .82 + .18 * outBack(d / 7) : 1;
+    el.style.transform = `scale(${sc.toFixed(3)})`;
+}
+
+/* ------------------------------------------------------------- narrator */
+const MOOD = { s0: 'happy', s1: 'neutral', s2: 'neutral', s3: 'think', s4: 'worried', s5: 'think', s6: 'happy', s7: 'happy' };
+function narrator(f, sc) {
+    const mood = MOOD[sc.id];
+    let hop = 0;
+    for (const s of SHOTS) { const d = f - s.from; if (d >= 0 && d < 12) hop = Math.max(hop, Math.sin(d / 12 * Math.PI) * .5); }
+    let armL = 0, armR = 0;
+    if (CAP.hot) { const dd = f - CAP.start, g = dd >= 0 && dd < 24 ? Math.sin(Math.min(1, dd / 5) * Math.PI / 2) * (1 - Math.max(0, dd - 10) / 14) : 0;
+                   if (+CAP.key.split(':')[1] % 2) armL = 40 * g; else armR = 40 * g; }
+    if (mood === 'happy') { armL = Math.max(armL, 24 + Math.sin(f * .35) * 12); armR = Math.max(armR, 24 + Math.cos(f * .35) * 12); }
+    if (mood === 'worried') { armL += -4 + Math.sin(f * .9) * 1.5; armR += -4 + Math.cos(f * .9) * 1.5; }
+    if (mood === 'think') armL = Math.max(armL, 12);
+    window.MASCOT.pose(f, { talk: TL.mouth[f] || 0, hop, armL, armR, dance: mood === 'happy' && sc.id !== 's0' ? .6 : 0, enter: outCubic(inv(f, 4, 26)) });
+}
+
+async function render(f) {
+    f = clamp(Math.round(f), 0, TOTAL - 1);
+    SEEKS = [];
+    fitLabels();
+    const sc = sceneAt(f);
+    camera(f);
+    captions(f);
+    narrator(f, sc);
+    await Promise.all(SEEKS.map(([v, t]) => seekTo(v, t)));
+}
+
+build();
+render(0);
+window.__FPS = FPS; window.__TOTAL = TOTAL; window.__seek = render; window.__ready = true;
+})();
+</script>
+</body>
+</html>
