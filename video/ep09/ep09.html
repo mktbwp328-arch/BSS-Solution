@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ข้อมูลที่ควรเตรียมก่อนขอราคา Conveyor — 9:16</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
+<style>
+/* EP.09 "Brief Form" 9:16. Full-frame photos throughout (real site
+   photos cut from the company's collages, single library photos, text-free
+   Gemini illustrations), drifting sideways. Over them a quote-request brief
+   fills in as the narration goes: a section per scene, each row typed with
+   a caret and ticked when done; the card flips to its next page at each
+   scene change. Cuts dissolve under a sweeping orange light leak.
+
+   Deterministic: render(f) sets everything from the frame number.
+   Key content stays inside TikTok's safe area (y ~150–1500). */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0b2048; }
+/* footage sits in its own stacking layer under the svg */
+#vids { position: absolute; inset: 0; z-index: 0; isolation: isolate; }
+#svg { position: absolute; inset: 0; z-index: 1; }
+#vids video { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; display: none; }
+#cap { position: absolute; left: 40px; right: 40px; top: 1176px; text-align: center; z-index: 3; }
+/* one colour for the whole line: white on a thick navy outline */
+#capText {
+    display: inline-block; white-space: nowrap;
+    font-family: 'Kanit', sans-serif; font-weight: 800; font-size: 78px; line-height: 1.3;
+    letter-spacing: 1px; color: #fff; -webkit-text-stroke: 16px #071b45; paint-order: stroke fill;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.55));
+}
+</style>
+<script src="timeline.js"></script>
+<script src="mascot.js"></script>
+</head>
+<body>
+<div id="vids"></div>
+<svg id="svg" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="scrimT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071b45" stop-opacity=".5"/><stop offset="1" stop-color="#071b45" stop-opacity="0"/></linearGradient>
+  <linearGradient id="scrimB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071b45" stop-opacity="0"/><stop offset=".45" stop-color="#071b45" stop-opacity=".45"/><stop offset="1" stop-color="#071b45" stop-opacity=".85"/></linearGradient>
+  <pattern id="stripes" width="60" height="60" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)"><rect width="60" height="60" fill="#0b2a5c"/><rect width="26" height="60" fill="#0e3170"/></pattern>
+  <!-- horizontal motion blur for the whip-pans -->
+  <filter id="whipF" x="-10%" y="0" width="120%" height="100%"><feGaussianBlur id="whipN" stdDeviation="0 0"/></filter>
+  <filter id="whipP" x="-10%" y="0" width="120%" height="100%"><feGaussianBlur id="whipNP" stdDeviation="0 0"/></filter>
+  <filter id="sticker" x="-5%" y="-5%" width="110%" height="110%"><feMorphology in="SourceAlpha" operator="dilate" radius="5" result="fat"/><feFlood flood-color="#ffffff"/><feComposite in2="fat" operator="in" result="rim"/><feMerge><feMergeNode in="rim"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <pattern id="bp" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60,0 L0,0 L0,60" fill="none" stroke="#9cc3ff" stroke-opacity=".35" stroke-width="2"/></pattern>
+  <pattern id="hz" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="40" height="40" fill="#071b45"/><rect width="20" height="40" fill="#fc8000"/></pattern>
+  <pattern id="gridS" width="54" height="54" patternUnits="userSpaceOnUse"><path d="M54,0 L0,0 L0,54" fill="none" stroke="#9cc3ff" stroke-opacity=".12" stroke-width="2"/></pattern>
+  <radialGradient id="glow7"><stop offset="0" stop-color="#fc8000" stop-opacity=".18"/><stop offset="1" stop-color="#fc8000" stop-opacity="0"/></radialGradient>
+  <filter id="noteSh" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".35"/></filter>
+  <radialGradient id="leak"><stop offset="0" stop-color="#ffb347" stop-opacity=".75"/><stop offset=".5" stop-color="#fc8000" stop-opacity=".3"/><stop offset="1" stop-color="#fc8000" stop-opacity="0"/></radialGradient>
+  <clipPath id="revealClip"><rect id="revealRect" width="0" height="1920"/></clipPath>
+  <clipPath id="halfL"><rect width="536" height="1920"/></clipPath>
+  <clipPath id="halfR"><rect x="544" width="536" height="1920"/></clipPath>
+</defs>
+<g id="shots"></g>
+<g id="scanline"></g>
+<rect width="1080" height="260" fill="url(#scrimT)"/>
+<rect y="1080" width="1080" height="840" fill="url(#scrimB)"/>
+<rect id="flash" width="1080" height="1920" fill="#fff" opacity="0"/>
+<g id="wipe"></g>
+<g id="top"></g>
+<g id="avatarWrap" transform="translate(356,1367) scale(.36)" filter="url(#sticker)"></g>
+</svg>
+<div id="cap"><span id="capText"></span></div>
+
+<script>
+(function () {
+'use strict';
+const TL = window.TL;
+const { FPS, TOTAL } = TL;
+const NAVY = '#071b45', OR = '#fc8000', RED = '#e5412d', CW = 1080, CH = 1920;
+// web name → full-resolution original (matched by image content)
+const ORIG = {
+    'roller-conveyor': 'Roller Conveyor ลูกกลิ้ง', 'conveyor-belt-line': 'สายพานลำเลียง', 'chain-conveyor': 'CHAIN CONVEYOR',
+    'pvc-conveyor-belt-system': 'ระบบสายพานลำเลียงแบบ PVC', 'conveyor-company-chonburi': 'บริษัท รับทำ conveyor ชลบุรี',
+    'conveying-system': 'ระบบลำเลียง', 'conveyor-belt-factory': 'โรงงานผลิตสายพานลำเลียง',
+    'chain-conveyor-system': 'ระบบลำเลียงแบบโซ่ Chain Conveyor', 'conveyor-belt': 'สายพานลำเลียง conveyor belt',
+    'recycling-conveyor-equipment': 'ระบบลำเลียง Recycle Equipment', 'conveyor-system': 'Conveyor',
+    'roller-conveyor-system': 'ระบบลำเลียงแบบลูกกลิ้ง (Roller Conveyor)', 'pvc-belt-conveyor': 'PVC BELT CONVEYOR',
+    'factory-shutdown-service': 'งาน shutdown โรงงาน', 'conveyor-installation-service': 'บริการติดตั้งสายพานลำเลียง'
+};
+// photos EP.02 did not use: the general web images (works/), plus the one
+// company original EP.02 left out
+const IMG = n => ORIG[n] && n === 'conveyor-installation-service' ? encodeURI(`../../images/BSS/${ORIG[n]}.png`) : `../../images/works/${n}.jpg`;
+
+/* ------------------------------------------------------------- helpers */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const inv = (f, a, b) => clamp((f - a) / (b - a), 0, 1);
+const lerp = (a, b, t) => a + (b - a) * t;
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+const outBack = t => { if (t <= 0) return 0; if (t >= 1) return 1; const c = 2.2; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const inOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const els = {};
+const E = id => els[id] || (els[id] = document.getElementById(id));
+const at = (id, k, v) => { const e = E(id); if (e) e.setAttribute(k, v); };
+const lineAt = f => { for (let i = TL.lines.length - 1; i >= 0; i--) if (f >= TL.lines[i].from) return i; return -1; };
+const LN = TL.lines;
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+/* -------------------------------------------------- overlay vocabulary
+   Every overlay element carries data-a (how it animates) and data-t (frames
+   after the shot starts). animate() drives them; builders only place them. */
+let SHOT0 = 0;
+// frame offset, inside the current shot, of a word in line k
+const W = (k, word, lead = 0) => {
+    const l = LN[k], i = word ? Math.max(0, l.text.indexOf(word)) : 0;
+    return Math.round(l.from + i / l.text.length * (l.to - l.from)) - SHOT0 + lead;
+};
+const TXT = (x, y, s, size, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.anchor || 'start'}" dominant-baseline="central" font-family="Kanit" font-weight="${o.weight || 800}" font-size="${size}" fill="${o.fill || '#fff'}" stroke="${o.stroke || NAVY}" stroke-width="${o.sw === undefined ? size * .2 : o.sw}" stroke-linejoin="round" paint-order="stroke fill">${esc(s)}</text>`;
+// the label: a word or two in white, an orange bar drawing in underneath
+function kick(x, y, text, t, o = {}) {
+    const { size = 64, anchor = 'start', bar = OR } = o;
+    return `<g data-a="kick" data-t="${t}" class="kick" data-anchor="${anchor}">
+        <rect class="kbar" x="${x}" y="${y + size * .52}" width="0" height="${Math.round(size * .16)}" rx="${Math.round(size * .08)}" fill="${bar}"/>
+        ${TXT(x, y, text, size, { anchor })}</g>`;
+}
+// a red line struck through a label
+const strike = (x1, y, x2, t) => `<path data-a="draw" data-t="${t}" data-d="8" pathLength="1" d="M${x1},${y} L${x2},${y - 10}" stroke="${RED}" stroke-width="14" stroke-linecap="round" fill="none"/>`;
+function badge(x, y, t, ok = true) {
+    const col = ok ? OR : RED;
+    const mark = ok ? `<path d="M${x - 17},${y + 1} L${x - 5},${y + 14} L${x + 19},${y - 13}" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`
+                    : `<path d="M${x - 14},${y - 14} L${x + 14},${y + 14} M${x + 14},${y - 14} L${x - 14},${y + 14}" stroke="#fff" stroke-width="10" stroke-linecap="round"/>`;
+    return `<g data-a="pop" data-t="${t}" data-cx="${x}" data-cy="${y}"><circle cx="${x}" cy="${y}" r="38" fill="${col}" stroke="#fff" stroke-width="6"/>${mark}</g>`;
+}
+// chevrons travelling along a path (direction / speed)
+function flow(id, d, t, n = 4, dur = 70) {
+    let s = `<path id="${id}" d="${d}" fill="none" stroke="none"/>`;
+    for (let i = 0; i < n; i++)
+        s += `<g data-a="along" data-t="${t}" data-path="${id}" data-off="${i / n}" data-d="${dur}"><path d="M-16,-26 L14,0 L-16,26" fill="none" stroke="${NAVY}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/><path d="M-16,-26 L14,0 L-16,26" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    return s;
+}
+// a route traced on top of the machine
+const trace = (d, t, dur = 24) => `<path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="${NAVY}" stroke-width="20" stroke-linecap="round" stroke-opacity=".6"/>
+    <path data-a="draw" data-t="${t}" data-d="${dur}" pathLength="1" d="${d}" fill="none" stroke="${OR}" stroke-width="10" stroke-linecap="round"/>`;
+// the company photo/video library (local-only, not in git)
+const LIB = rel => encodeURI('../../images/รูป+วีดีโอ/BSS/' + rel);
+// a still from the library, cover-fitted to the frame (or to a box)
+const pic = (rel, x = 0, w = CW) => `<image href="${LIB(rel)}" x="${x}" y="0" width="${w}" height="${CH}" preserveAspectRatio="xMidYMid slice"/>`;
+let OX = 420;
+const photo = (n, ox = OX, extra = '') => `<image href="${IMG(n)}" x="${-ox}" y="0" width="1920" height="1920" preserveAspectRatio="xMidYMid slice" ${extra}/>`;
+const dark = (o, t = 0) => `<rect data-a="fadeTo" data-t="${t}" data-o="${o}" width="${CW}" height="${CH}" fill="${NAVY}"/>`;
+// split frame: two photos, each centred on its own subject, with a VS badge
+function vs(a, b, labA, labB, t1, t2) {
+    return `<g data-a="slideX" data-t="0" data-from="-560">${pic(a, 0, 536)}</g>
+        <g data-a="slideX" data-t="0" data-from="560">${pic(b, 544, 536)}</g>
+        <rect data-a="fade" data-t="6" x="536" y="0" width="8" height="1920" fill="#fff"/>
+        <g data-a="pop" data-t="10" data-cx="540" data-cy="700"><circle cx="540" cy="700" r="66" fill="${OR}" stroke="#fff" stroke-width="8"/>
+          <text x="540" y="702" text-anchor="middle" dominant-baseline="central" font-family="Kanit" font-weight="900" font-style="italic" font-size="60" fill="#fff">VS</text></g>` +
+        kick(268, 1010, labA, t1, { size: 54, anchor: 'middle' }) + kick(812, 1010, labB, t2, { size: 54, anchor: 'middle' });
+}
+// three small cards in a row (conveyor types)
+function cards(list, t) {
+    return list.map(([img, label], i) => {
+        const x = 200 + i * 340, y = 700, r = [-4, 2, 5][i];
+        return `<g data-a="pop" data-t="${t + i * 8}" data-cx="${x}" data-cy="${y}"><g transform="rotate(${r} ${x} ${y})">
+            <rect x="${x - 150}" y="${y - 170}" width="300" height="370" rx="18" fill="#fff"/>
+            <image href="${LIB(img)}" x="${x - 134}" y="${y - 154}" width="268" height="268" preserveAspectRatio="xMidYMid slice"/>
+            <text x="${x}" y="${y + 162}" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="40" fill="${NAVY}">${label}</text></g></g>`;
+    }).join('');
+}
+const PATTERN = () => `<rect width="${CW}" height="${CH}" fill="url(#stripes)"/>`;
+
+/* ------------------------------------------------------- the brief form
+   EP.09 builds a quote-request brief as the narration goes: one card on
+   top of the full-frame photos, a section per scene, each row typed in
+   with a caret, a tick when it is done. The card flips to the next page at
+   each scene change. All times are absolute frames (set in build()). */
+const LIBP = n => encodeURI('../../images/รูป+วีดีโอ/BSS/' + n);
+const PNL = n => '../ep08/photos/' + n + '.jpg';
+const GEM = n => LIBP('Gemini_Generated_Image_' + n + '.png');
+const GRAPH = new Intl.Segmenter('th', { granularity: 'grapheme' });
+const typed = (s, f, t0, rate = 1.4) => { const g = [...GRAPH.segment(s)].map(x => x.segment); const n = Math.max(0, Math.floor((f - t0) * rate)); return { txt: g.slice(0, n).join(''), done: n >= g.length }; };
+let FORM = {};                       // section per scene, built in build()
+function buildForm() {
+    const at_ = (k, word, lead = 0) => { const l = LN[k], i = word ? Math.max(0, l.text.indexOf(word)) : 0; return Math.round(l.from + i / l.text.length * (l.to - l.from)) + lead; };
+    FORM = {
+        s1: { n: '', title: 'ก่อนขอราคา ต้องเตรียมอะไร?', rows: [['ไม่รู้ต้องเตรียมข้อมูลอะไร', at_(1, 'ไม่รู้'), 'warn'], ['คุยหลายรอบ ยังไม่เห็นภาพตรงกัน', at_(2, 'คุยกัน'), 'warn']] },
+        s2: { n: '1', title: 'สินค้าที่ต้องการลำเลียง', rows: [['ประเภท: กล่อง / ขวด / ชิ้นงาน', at_(5, 'กล่อง', -6)], ['ขนาด / น้ำหนัก โดยประมาณ', at_(6, 'ขนาด', -6)], ['สินค้าต่างกัน ระบบก็ต่างกัน', at_(7, 'แตกต่าง', -10), 'note']] },
+        s3: { n: '2', title: 'ต้นทาง → ปลายทาง', rows: [['จากจุดไหน ไปจุดไหน', at_(9, 'จุดไหน', -6)], ['รูปถ่าย / วิดีโอหน้างาน', at_(10, 'รูปถ่าย', -6)], ['ขนาดพื้นที่คร่าวๆ', at_(11, 'ขนาดพื้นที่', -6)]] },
+        s4: { n: '3', title: 'ลักษณะการทำงาน', rows: [['กี่ชิ้นต่อชั่วโมง', at_(13, 'กี่ชิ้น', -6)], ['ทำงานร่วมกับเครื่องจักรเดิม?', at_(14, 'เครื่องจักร', -8)], ['ข้อจำกัดพื้นที่ติดตั้ง', at_(15, 'ข้อจำกัด', -6)]] },
+        s5: { n: '✓', title: 'ไม่ต้องครบทุกอย่างตั้งแต่แรก', rows: [['สินค้าที่ลำเลียง', at_(17, 'อธิบาย', -6)], ['ต้นทาง → ปลายทาง', at_(17, 'ปัญหา', -2)], ['ลักษณะการทำงาน', at_(17, 'ความต้องการ', -4)], ['พร้อมคุยกับทีมออกแบบ', at_(18, 'ทีมออกแบบ', -6), 'go']] },
+        s6: { n: '', title: 'เข้าใจปัญหาให้ชัดก่อน', rows: [['ข้อมูลตรงจุด', at_(20, 'ข้อมูล', -6)], ['แก้ปัญหาตรงจุด', at_(20, 'แก้ปัญหา', -6), 'go']] }
+    };
+}
+const CARD9 = { x: 80, y: 290, w: 920 };
+function drawForm(f, sc, flip) {
+    const sec = FORM[sc.id];
+    if (!sec) return '';
+    const rowH = 92, head = 150, h = head + sec.rows.length * rowH + 30;
+    const { x, y, w } = CARD9, sy = Math.max(.02, Math.abs(Math.cos(flip * Math.PI)));
+    let s = `<g transform="translate(0,${y}) scale(1,${sy.toFixed(3)}) translate(0,${-y})">
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="30" fill="#ffffff" fill-opacity=".93" filter="url(#noteSh)"/>
+      <rect x="${x}" y="${y}" width="${w}" height="16" rx="8" fill="${OR}"/>
+      <rect x="${x + 30}" y="${y + 40}" width="78" height="78" rx="18" fill="${NAVY}"/>
+      ${TXT(x + 69, y + 79, sec.n || '?', 46, { anchor: 'middle', sw: 0, weight: 900 })}
+      ${TXT(x + 130, y + 79, sec.title, sec.title.length > 22 ? 42 : 48, { fill: NAVY, sw: 0, weight: 900 })}
+      ${['s2', 's3', 's4'].map((id, i) => { const done = ['s5', 's6', 's7'].includes(sc.id) || (sc.id > id && sc.id <= 's4'); const on = sc.id === id;
+          return `<circle cx="${x + w - 120 + i * 36}" cy="${y + 79}" r="11" fill="${on ? OR : done ? NAVY : '#d5dbe6'}"/>`; }).join('')}`;
+    sec.rows.forEach(([label, t0, kind], i) => {
+        if (f < t0) return;
+        const ry = y + head + i * rowH + rowH / 2, ty = typed(label, f, t0 + 4);
+        const box = kind === 'warn' ? RED : kind === 'note' ? '#8a93a3' : OR;
+        const tickP = ty.done ? outBack(inv(f, t0 + 4 + label.length / 1.4, t0 + 14 + label.length / 1.4)) : 0;
+        s += `<rect x="${x + 30}" y="${ry - 38}" width="${w - 60}" height="76" rx="16" fill="#f1f4f9"/>
+          <rect x="${x + 48}" y="${ry - 22}" width="44" height="44" rx="10" fill="none" stroke="${NAVY}" stroke-width="4"/>
+          <g transform="translate(${x + 70},${ry}) scale(${Math.max(.001, tickP).toFixed(3)})"><rect x="-22" y="-22" width="44" height="44" rx="10" fill="${box}"/>
+            ${kind === 'warn' ? '<path d="M0,-12 V4 M0,11 V12" stroke="#fff" stroke-width="7" stroke-linecap="round"/>' : '<path d="M-11,1 L-3,10 L12,-9" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'}</g>
+          ${TXT(x + 116, ry, ty.txt, 40, { fill: kind === 'go' ? OR : NAVY, sw: 0, weight: kind === 'go' ? 900 : 800 })}`;
+        if (!ty.done && Math.floor(f / 8) % 2 === 0) s += `<rect x="${x + 116 + ty.txt.length * 26}" y="${ry - 24}" width="5" height="48" fill="${OR}"/>`;
+    });
+    return s + '</g>';
+}
+
+/* ------------------------------------------------------------- shots
+   Every shot is a full-frame photo: real site photos (panels cut from the
+   company's site-photo collages, single library photos) and text-free
+   Gemini illustrations. gem: zoom from the top-left so the small corner
+   mark falls outside the frame. */
+const SHOTS = [
+  { at: () => 0, pic: GEM('dzjtxedzjtxedzjt'), gem: true, ar: () =>
+      `<rect width="${CW}" height="${CH}" fill="${NAVY}" opacity=".55"/>` +
+      `<g data-a="rise" data-t="2">${TXT(540, 640, 'ข้อมูลที่ควรเตรียม', 84, { anchor: 'middle', weight: 900 })}</g>
+       <g data-a="rise" data-t="7">${TXT(540, 780, 'ก่อนขอราคา', 112, { anchor: 'middle', fill: OR, weight: 900 })}</g>
+       <g data-a="rise" data-t="12">${TXT(540, 910, 'Conveyor', 96, { anchor: 'middle', weight: 900 })}</g>` },
+  { line: 0, pic: PNL('p21233687_3') },
+  { line: 1, pic: GEM('7m5ux77m5ux77m5u'), gem: true, ppos: 'xMaxYMid' },
+  { line: 2, pic: GEM('cdk7kncdk7kncdk7'), gem: true },
+  { line: 3, pic: PNL('p21233688_0') },
+  { line: 4, pic: LIBP('S__336003077_0.jpg') },
+  { line: 5, pic: PNL('p21233686_0') },
+  { line: 6, pic: PNL('p21233674_3') },
+  { line: 7, pic: PNL('p21233693_0') },
+  { line: 8, pic: PNL('p21233694_3') },
+  { line: 9, pic: PNL('p21233683_2') },
+  { line: 10, pic: PNL('p21233684_0') },
+  { line: 11, pic: PNL('p21233675_1') },
+  { line: 12, pic: GEM('3414mi3414mi3414'), gem: true },
+  { line: 13, pic: PNL('p21233687_1') },
+  { line: 14, pic: PNL('p21233680_1') },
+  { line: 15, pic: PNL('p21233675_0') },
+  { line: 16, pic: PNL('p21233681_2') },
+  { line: 17, pic: GEM('j1s0wgj1s0wgj1s0'), gem: true },
+  { line: 18, pic: PNL('p21233689_2') },
+  { line: 19, pic: GEM('b6dkh2b6dkh2b6dk'), gem: true },
+  { line: 20, pic: PNL('p21233673_1') },
+  { line: 21, pic: GEM('xu8xfvxu8xfvxu8x'), gem: true, still: true, ar: () => {
+      let s = `<rect width="${CW}" height="${CH}" fill="${NAVY}" opacity=".55"/><g data-a="rise" data-t="2"><rect x="90" y="330" width="900" height="780" rx="44" fill="#fff"/><rect x="90" y="330" width="900" height="16" rx="8" fill="${OR}"/></g>
+        <g data-a="pop" data-t="8" data-cx="540" data-cy="470">
+          <image href="../../logo.png" x="150" y="410" width="140" height="140"/>
+          <text x="315" y="480" font-family="Kanit" font-weight="900" font-style="italic" font-size="74" fill="${NAVY}">BSS <tspan fill="${OR}">SOLUTION</tspan></text>
+          <text x="318" y="535" font-family="Kanit" font-weight="800" font-size="38" fill="${NAVY}">(1978)</text></g>`;
+      [['TEL', '02-317-5470-3'], ['MOBILE', '086-822-8787, 094-846-8667'], ['MAIL', 'sale.bss1978@gmail.com'], ['LINE', 'bss_1978']].forEach(([k, v], i) => {
+          const y = 670 + i * 110;
+          s += `<g data-a="slide" data-t="${16 + i * 6}">
+              <text x="150" y="${y}" dominant-baseline="central" font-family="Kanit" font-weight="900" font-size="30" fill="${OR}">${k}</text>
+              <text x="310" y="${y}" dominant-baseline="central" font-family="Kanit" font-weight="800" font-size="${v.length > 22 ? 38 : 46}" fill="${NAVY}">${v}</text></g>`;
+      });
+      return s; } }
+];
+SHOTS.forEach(s => { if (!s.ar) s.ar = () => ''; });
+
+/* ------------------------------------------------------------- scenes */
+const SCN = { s1: {}, s2: {}, s3: {}, s4: {}, s5: {}, s6: {}, s7: {} };
+
+/* ------------------------------------------------------------- build */
+function build() {
+    SHOTS.forEach((s, k) => {
+        s.from = s.line === undefined ? s.at() : LN[s.line].from - 4;
+        SHOT0 = s.from; OX = s.ox === undefined ? 420 : s.ox;
+        const bg = s.bg ? s.bg() : s.pic ? `<image href="${s.pic}" width="${CW}" height="${CH}" preserveAspectRatio="${s.ppos || 'xMidYMid'} slice"/>` : '';
+        s.html = `<g id="shot${k}" visibility="hidden"><g id="kb${k}">${bg}</g><g id="ar${k}">${s.build ? s.build(k) : s.ar()}</g></g>`;
+    });
+    SHOTS.forEach((s, k) => { s.to = k + 1 < SHOTS.length ? SHOTS[k + 1].from : TOTAL; });
+    buildForm();
+    E('shots').innerHTML = SHOTS.map(s => s.html).join('');
+    // video shots: one muted <video> each, under the svg, seeked frame by frame
+    SHOTS.forEach((s, k) => { if (!s.vid) return;
+        const v = document.createElement('video'); v.muted = true; v.preload = 'metadata'; v.playsInline = true; v.src = LIB(s.vid);
+        v.id = 'vid' + k; E('vids').appendChild(v); s.el = v; });
+    SHOTS.forEach((s, k) => { s.nodes = [...E('ar' + k).querySelectorAll('[data-a]')]; });
+    E('top').innerHTML = TXT(70, 110, 'ข้อมูลก่อนขอราคา Conveyor', 34, { sw: 0 }).replace('<text ', '<text opacity=".85" ');
+    E('avatarWrap').innerHTML = window.MASCOT.svg;
+}
+
+// once the font is in, measure each label so its bar can run under it
+let FITTED = false;
+function fitLabels() {
+    if (FITTED || document.fonts.status !== 'loaded') return;
+    document.querySelectorAll('.sign').forEach(g => {
+        const t = g.querySelector('text'), b = t.getBBox(), I = g.querySelector('.sgI'), O = g.querySelector('.sgO');
+        const x = b.x - 96, y = b.y - 18, w = b.width + 96 + 34, h = b.height + 36;
+        I.setAttribute('x', x); I.setAttribute('y', y); I.setAttribute('width', w); I.setAttribute('height', h);
+        O.setAttribute('x', x - 10); O.setAttribute('y', y - 10); O.setAttribute('width', w + 20); O.setAttribute('height', h + 20);
+        g.querySelector('.sgIc').setAttribute('transform', `translate(${x + 50},${y + h / 2})`);
+        const L = x - 10, R = x + w + 10, dx = L < 30 ? 30 - L : R > 1050 ? 1050 - R : 0;
+        if (dx) g.setAttribute('transform', `translate(${dx},0)`);
+    });
+    document.querySelectorAll('.cbox').forEach(g => {
+        const t = g.querySelector('text'), r = g.querySelector('rect'), b = t.getBBox(), px = 18, py = 8;
+        r.setAttribute('x', (b.x - px).toFixed(1)); r.setAttribute('y', (b.y - py).toFixed(1));
+        r.setAttribute('width', (b.width + px * 2).toFixed(1)); r.setAttribute('height', (b.height + py * 2).toFixed(1));
+        // keep every box inside the frame
+        const L = b.x - px, R = b.x + b.width + px, dx = L < 40 ? 40 - L : R > 1040 ? 1040 - R : 0;
+        if (dx) g.setAttribute('transform', `translate(${dx.toFixed(1)},0)`);
+    });
+    document.querySelectorAll('.kick').forEach(g => {
+        const t = g.querySelector('text'), r = g.querySelector('.kbar'), b = t.getBBox();
+        r.setAttribute('x', b.x.toFixed(1)); r.dataset.w = b.width.toFixed(1);
+    });
+    FITTED = true;
+}
+
+/* ------------------------------------------------------------- animate */
+const LENS = {};
+function animate(k, l) {
+    for (const n of SHOTS[k].nodes) {
+        const a = n.dataset.a, t = +n.dataset.t || 0, d = +(n.dataset.d || 12), cx = +n.dataset.cx, cy = +n.dataset.cy;
+        const p = inv(l, t, t + d);
+        switch (a) {
+        case 'kick': { const q = outCubic(inv(l, t, t + 10)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(${((1 - q) * -50).toFixed(1)},0)`);
+            const r = n.querySelector('.kbar'); r.setAttribute('width', ((+r.dataset.w || 0) * outCubic(inv(l, t + 4, t + 16))).toFixed(1)); break; }
+        case 'draw': n.setAttribute('stroke-dasharray', '1 1'); n.setAttribute('stroke-dashoffset', (1 - outCubic(p)).toFixed(4)); n.setAttribute('opacity', l >= t ? 1 : 0); break;
+        case 'pop': { const s = outBack(inv(l, t, t + 11)); n.setAttribute('opacity', l >= t ? 1 : 0); n.setAttribute('transform', `translate(${cx},${cy}) scale(${Math.max(.001, s).toFixed(3)}) translate(${-cx},${-cy})`); break; }
+        case 'fade': n.setAttribute('opacity', inv(l, t, t + 10).toFixed(3)); break;
+        case 'fadeTo': n.setAttribute('opacity', (inv(l, t, t + 10) * +n.dataset.o).toFixed(3)); break;
+        case 'rise': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(0,${((1 - q) * 50).toFixed(1)})`); break; }
+        case 'slide': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('opacity', q.toFixed(3)); n.setAttribute('transform', `translate(${((1 - q) * -80).toFixed(1)},0)`); break; }
+        case 'slideX': { const q = outCubic(inv(l, t, t + 12)); n.setAttribute('transform', `translate(${((1 - q) * +n.dataset.from).toFixed(1)},0)`); break; }
+        case 'along': { const path = E(n.dataset.path); if (!LENS[n.dataset.path]) LENS[n.dataset.path] = path.getTotalLength();
+            const len = LENS[n.dataset.path];
+            let q = (l - t) / d + +n.dataset.off; q -= Math.floor(q);
+            const P = path.getPointAtLength(q * len), P2 = path.getPointAtLength(Math.min(len, q * len + 2)), P1 = path.getPointAtLength(Math.max(0, q * len - 2));
+            const ang = Math.atan2(P2.y - P1.y, P2.x - P1.x) * 180 / Math.PI;
+            n.setAttribute('opacity', l >= t ? (Math.min(1, q * 6, (1 - q) * 6) * inv(l, t, t + 6)).toFixed(3) : 0);
+            n.setAttribute('transform', `translate(${P.x.toFixed(1)},${P.y.toFixed(1)}) rotate(${ang.toFixed(1)})`); break; }
+        case 'spin': n.setAttribute('opacity', inv(l, t, t + 8).toFixed(3)); n.setAttribute('transform', `rotate(${(l * 1.6).toFixed(1)} ${cx} ${cy})`); break;
+        case 'ring': { if (l < t) { n.setAttribute('opacity', 0); break; } const q = ((l - t) % 36) / 36, x = n.getAttribute('cx'), y = n.getAttribute('cy'); n.setAttribute('opacity', (1 - q).toFixed(3));
+            n.setAttribute('transform', `translate(${x},${y}) scale(${(1 + q * 1.6).toFixed(3)}) translate(${-x},${-y})`); break; }
+        case 'bpgrid': n.setAttribute('opacity', (1 - inOut(inv(l, t + d * .55, t + d))).toFixed(3)); break;
+        case 'blink': n.setAttribute('opacity', l < t ? 0 : (Math.floor((l - t) / 8) % 2 ? .35 : 1)); break;
+        case 'alarm': n.setAttribute('opacity', l < t ? 0 : (.1 + .14 * (Math.sin((l - t) * .5) * .5 + .5)).toFixed(3)); break;
+        case 'attr': n.setAttribute(n.dataset.attr, lerp(+n.dataset.from, +n.dataset.to, inOut(p)).toFixed(1)); break;
+        }
+    }
+}
+
+/* ------------------------------------------------------- camera & page */
+function shotAt(f) { for (let k = SHOTS.length - 1; k >= 0; k--) if (f >= SHOTS[k].from) return k; return 0; }
+const sceneAt = f => TL.scenes.find(s => f >= s.from && f < s.to) || TL.scenes[TL.scenes.length - 1];
+let VIS = new Set();
+let SEEKS = [];
+const seekTo = () => Promise.resolve();
+const FADE = 10;                     // cuts: the next photo dissolves in under an orange light leak
+
+// every photo drifts: alternate shots pan the other way; Gemini frames are
+// zoomed from the top-left so their corner mark stays out of shot
+function placePhoto(k, f) {
+    const s = SHOTS[k], l = f - s.from, dur = Math.max(1, s.to - s.from), p = l / dur, dir = k % 2 ? 1 : -1;
+    const z = s.still ? (s.gem ? 1.14 : 1) : (s.gem ? 1.14 : 1.05) + .05 * p;
+    const ox = s.gem ? 0 : 540, oy = s.gem ? 0 : 860, dx = s.still ? 0 : dir * (30 - 60 * p);
+    at('kb' + k, 'transform', `translate(${dx.toFixed(1)},0) translate(${ox},${oy}) scale(${z.toFixed(4)}) translate(${-ox},${-oy})`);
+}
+function camera(f) {
+    const k = shotAt(f), s = SHOTS[k], l = f - s.from;
+    const fading = k > 0 && l < FADE;
+    const show = new Set([k]); if (fading) show.add(k - 1);
+    for (const v of VIS) if (!show.has(v)) at('shot' + v, 'visibility', 'hidden');
+    for (const v of show) if (!VIS.has(v)) at('shot' + v, 'visibility', 'visible');
+    VIS = show;
+    animate(k, l);
+    placePhoto(k, f); if (fading) placePhoto(k - 1, f);
+    at('shot' + k, 'opacity', fading ? inOut(l / FADE).toFixed(3) : 1);
+    let html = '';
+    if (fading) {
+        const p = l / FADE, x = lerp(-300, 1380, p);
+        html += `<circle cx="${x.toFixed(1)}" cy="760" r="620" fill="url(#leak)" opacity="${Math.sin(p * Math.PI).toFixed(3)}"/>`;
+    }
+    // the brief card: flips at each scene change, otherwise shows its section
+    const sc = sceneAt(f);
+    let flip = 0;
+    for (const x of TL.scenes.slice(1)) { const d = f - x.from; if (d > -8 && d < 8) flip = (d + 8) / 16; }
+    // sceneAt() already returns the old scene until the cut, so the page swaps at the flip's midpoint
+    if (sc.id !== 's0' && sc.id !== 's7') html += drawForm(f, sc, flip);
+    E('wipe').innerHTML = html;
+}
+
+/* ------------------------------------------------------------- captions */
+// keyword list only steers the narrator's gestures now; the text is one colour
+const HOT = ['Conveyor', 'ข้อมูล', 'สินค้า', 'กล่อง', 'ขนาด', 'น้ำหนัก', 'ต้นทาง', 'ปลายทาง', 'รูปถ่าย', 'พื้นที่',
+    'ลักษณะการทำงาน', 'ชั่วโมง', 'เครื่องจักรเดิม', 'ข้อจำกัด', 'ชัดเจน', 'ทีมออกแบบ', 'เข้าใจปัญหา', 'ตรงจุด', 'บีเอสเอส', 'โซลูชั่น'];
+const SEG = new Intl.Segmenter('th', { granularity: 'word' });
+const CHUNK_MAX = 13;
+const chunkCache = {};
+function chunksOf(text) {
+    if (chunkCache[text]) return chunkCache[text];
+    const out = [];
+    for (const part of text.split(' ')) {
+        let cur = [];
+        const len = a => a.join('').length;
+        for (const { segment } of SEG.segment(part)) {
+            if (cur.length && len(cur) + segment.length > CHUNK_MAX) { out.push(cur); cur = []; }
+            cur.push(segment);
+        }
+        if (cur.length) out.push(cur);
+    }
+    const merged = [];
+    for (const c of out) { if (merged.length && c.join('').length <= 3) merged[merged.length - 1] = merged[merged.length - 1].concat(c); else merged.push(c); }
+    return (chunkCache[text] = merged);
+}
+let CAP = { key: '', start: 0, hot: false };
+function captions(f) {
+    const i = lineAt(f), el = E('capText'), box = E('cap');
+    if (i < 0 || f > LN[i].to + 8) { box.style.opacity = 0; CAP.key = ''; CAP.hot = false; return; }
+    const ln = LN[i], chunks = chunksOf(ln.text);
+    const sizes = chunks.map(c => c.join('').length), total = sizes.reduce((a, b) => a + b, 0);
+    const p = inv(f, ln.from, ln.to) * total;
+    let acc = 0, k = 0;
+    for (; k < chunks.length - 1; k++) { if (p < acc + sizes[k]) break; acc += sizes[k]; }
+    const key = i + ':' + k;
+    if (key !== CAP.key) {
+        const str = chunks[k].join('');
+        el.textContent = str;
+        CAP = { key, start: Math.round(ln.from + acc / total * (ln.to - ln.from)), hot: HOT.some(w => str.includes(w)) };
+    }
+    box.style.opacity = 1;
+    const d = Math.max(0, f - CAP.start), sc = d < 7 ? .82 + .18 * outBack(d / 7) : 1;
+    el.style.transform = `scale(${sc.toFixed(3)})`;
+}
+
+/* ------------------------------------------------------------- narrator */
+const MOOD = { s0: 'happy', s1: 'neutral', s2: 'neutral', s3: 'think', s4: 'worried', s5: 'think', s6: 'happy', s7: 'happy' };
+function narrator(f, sc) {
+    const mood = MOOD[sc.id];
+    let hop = 0;
+    for (const s of SHOTS) { const d = f - s.from; if (d >= 0 && d < 12) hop = Math.max(hop, Math.sin(d / 12 * Math.PI) * .5); }
+    let armL = 0, armR = 0;
+    if (CAP.hot) { const dd = f - CAP.start, g = dd >= 0 && dd < 24 ? Math.sin(Math.min(1, dd / 5) * Math.PI / 2) * (1 - Math.max(0, dd - 10) / 14) : 0;
+                   if (+CAP.key.split(':')[1] % 2) armL = 40 * g; else armR = 40 * g; }
+    if (mood === 'happy') { armL = Math.max(armL, 24 + Math.sin(f * .35) * 12); armR = Math.max(armR, 24 + Math.cos(f * .35) * 12); }
+    if (mood === 'worried') { armL += -4 + Math.sin(f * .9) * 1.5; armR += -4 + Math.cos(f * .9) * 1.5; }
+    if (mood === 'think') armL = Math.max(armL, 12);
+    window.MASCOT.pose(f, { talk: TL.mouth[f] || 0, hop, armL, armR, dance: mood === 'happy' && sc.id !== 's0' ? .6 : 0, enter: outCubic(inv(f, 4, 26)) });
+}
+
+async function render(f) {
+    f = clamp(Math.round(f), 0, TOTAL - 1);
+    SEEKS = [];
+    fitLabels();
+    const sc = sceneAt(f);
+    camera(f);
+    captions(f);
+    narrator(f, sc);
+    await Promise.all(SEEKS.map(([v, t]) => seekTo(v, t)));
+}
+
+build();
+render(0);
+window.__FPS = FPS; window.__TOTAL = TOTAL; window.__seek = render; window.__ready = true;
+})();
+</script>
+</body>
+</html>
