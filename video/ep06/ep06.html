@@ -251,7 +251,7 @@ const SHOTS = [
 
   { line: 12, pic: R('recycling.png'), ar: () => row(RX, RY, 'ทำงานตามแบบ', W(12, 'ตามที่', -4)) },
 
-  { line: 13, pic: 'ChatGPT Image 14 ส.ค. 2569 09_45_00.png', ar: () =>
+  { line: 13, pic: R('article_maintenance.png'), ppos: 'xMaxYMid', ar: () =>
       row(RX, RY - 104, 'เจอจุดต้องปรับ', W(13, 'ต้องปรับ', -4), { warn: true }) + row(RX, RY, 'แก้ไขก่อนส่งมอบ', W(13, 'แก้ไข', -4)) },
 
   { line: 14, pic: R('article_roller_guide.png'), ppos: 'xMaxYMid', ar: () => pinLabel('พร้อมใช้งานจริง', W(14, 'พร้อม', -6), OR) },
