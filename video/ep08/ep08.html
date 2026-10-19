@@ -5,8 +5,9 @@
 <title>กรณีศึกษาจากหน้างาน — 9:16</title>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
 <style>
-/* EP.08 "Case Study Diorama" 9:16. Told entirely in one drawn factory
-   floor (the company library has no unused, text-free footage left): a
+/* EP.08 "Case Study Diorama" 9:16. Told mostly in one drawn factory
+   floor, with real site photos cut in at key lines (panels cropped from the
+   company's site-photo collages, kept in photos/, local-only): a
    machine, the next station, a worker carrying every box across while a
    pile grows; then pins, a route and trouble marks; then a conveyor builds
    between the two points, boxes ride it and the worker moves to checking
@@ -314,32 +315,33 @@ function worldTick(f) {
    No media: each shot is a camera position in the world plus screen-space
    notes. cam = [world x, world y, zoom]. */
 const OV = [1250, 700, .5];
+const LIBP = n => encodeURI('../../images/รูป+วีดีโอ/BSS/' + n);
 const SHOTS = [
   { at: () => 0, cam: OV, ar: () =>
       `<rect width="${CW}" height="${CH}" fill="${NAVY}" opacity=".55"/>` +
       `<g data-a="rise" data-t="2">${TXT(540, 620, 'กรณีศึกษาจากหน้างาน', 76, { anchor: 'middle', weight: 900 })}</g>
        <g data-a="rise" data-t="7">${TXT(540, 760, 'เปลี่ยนปัญหา', 104, { anchor: 'middle', fill: OR, weight: 900 })}</g>
        <g data-a="rise" data-t="12">${TXT(540, 890, 'ให้เป็นระบบที่ดีขึ้น', 84, { anchor: 'middle', weight: 900 })}</g>` },
-  { line: 0, cam: [1250, 740, .58], ar: () => note(540, 380, 'โรงงานแห่งหนึ่ง', W(0, 'โรงงาน', -6)) },
-  { line: 1, cam: [960, 760, 1.05], ar: () => note(540, 380, 'ยกสินค้าออกจากเครื่อง', W(1, 'ยก', -6), { size: 50 }) },
+  { line: 0, cam: [1250, 740, .58], pic: 'photos/p21233673_0.jpg', ar: () => note(540, 380, 'โรงงานแห่งหนึ่ง', W(0, 'โรงงาน', -6)) },
+  { line: 1, cam: [960, 760, 1.05], pic: LIBP('S__336003076_0.jpg'), ar: () => note(540, 380, 'ยกสินค้าออกจากเครื่อง', W(1, 'ยก', -6), { size: 50 }) },
   { line: 2, cam: [1350, 780, .75], ar: () => note(540, 380, 'ไปวางทีละชิ้น', W(2, 'ทีละชิ้น', -6)) },
   { line: 3, cam: [1250, 750, .6], ar: () => note(540, 380, 'งานซ้ำๆ เพิ่มขึ้น', W(3, 'ซ้ำ', -6), { red: true }) },
   { line: 4, cam: [1000, 830, 1.15], ar: () => note(540, 380, 'สินค้าสะสม!', W(4, 'สะสม', -6), { red: true, rot: 3 }) },
 
-  { line: 5, cam: [1250, 750, .6], ar: () => note(540, 380, 'เจอปัญหาแบบนี้', W(5, 'ปัญหา', -6)) },
+  { line: 5, cam: [1250, 750, .6], pic: LIBP('S__13115399_0.jpg'), ar: () => note(540, 380, 'เจอปัญหาแบบนี้', W(5, 'ปัญหา', -6)) },
   { line: 6, cam: [1260, 800, .62], ar: () => note(540, 380, 'รีบติดตั้งสายพาน?', W(6, 'ติดตั้ง', -6), { red: true }) },
   { line: 7, cam: [820, 720, .95], ar: () => note(540, 380, 'ดูก่อน: ออกจากไหน', W(7, 'ออกจาก', -8), { size: 50 }) },
   { line: 8, cam: [1950, 720, .95], ar: () => note(540, 380, 'ส่งต่อไปที่ไหน', W(8, 'ส่งต่อ', -6)) },
   { line: 9, cam: [1250, 780, .7], ar: () => note(540, 380, 'อะไรทำให้ติดขัด', W(9, 'ติดขัด', -6), { red: true }) },
 
-  { line: 10, cam: [1250, 750, .6], ar: () => note(540, 380, 'เข้าใจปัญหาแล้ว', W(10, 'เข้าใจ', -6)) },
+  { line: 10, cam: [1250, 750, .6], pic: 'photos/p21233689_1.jpg', ar: () => note(540, 380, 'เข้าใจปัญหาแล้ว', W(10, 'เข้าใจ', -6)) },
   { line: 11, cam: [1260, 800, .62], ar: () => note(540, 380, 'ออกแบบ Conveyor', W(11, 'ออกแบบ', -6)) },
-  { line: 12, cam: [1260, 820, .7], ar: () => tickNote(540, 380, 'เหมาะกับพื้นที่', W(12, 'พื้นที่', -6)) + tickNote(540, 510, 'เหมาะกับสินค้า', W(12, 'ลักษณะสินค้า', -6)) },
+  { line: 12, cam: [1260, 820, .7], pic: 'photos/p21233681_0.jpg', ar: () => tickNote(540, 380, 'เหมาะกับพื้นที่', W(12, 'พื้นที่', -6)) + tickNote(540, 510, 'เหมาะกับสินค้า', W(12, 'ลักษณะสินค้า', -6)) },
   { line: 13, cam: [1150, 840, 1.1], ar: () => note(540, 380, 'ลำเลียงต่อเนื่อง', W(13, 'ต่อเนื่อง', -6)) },
   { line: 14, cam: [2120, 780, .95], ar: () => note(540, 380, 'ลดการยกด้วยแรงคน', W(14, 'แรงงาน', -8), { size: 50 }) },
 
   { line: 15, cam: [1250, 750, .6], ar: () => note(540, 380, 'สายพานเพิ่ม 1 ชุด', W(15, 'สายพาน', -6)) + strikeAt(300, 780, 386, W(15, 'ไม่ได้', 6)) },
-  { line: 16, cam: [1250, 750, .6], ar: () => tickNote(540, 380, 'งานสะดวกขึ้นไหม', W(16, 'สะดวก', -6)) },
+  { line: 16, cam: [1250, 750, .6], pic: LIBP('S__336003074_0.jpg'), ar: () => tickNote(540, 380, 'งานสะดวกขึ้นไหม', W(16, 'สะดวก', -6)) },
   { line: 17, cam: [1250, 750, .6], ar: () => tickNote(540, 380, 'งานสะดวกขึ้นไหม', 0) + tickNote(540, 510, 'ติดขัดน้อยลงไหม', W(17, 'ติดขัด', -6)) },
   { line: 18, cam: [1250, 750, .6], ar: () => tickNote(540, 380, 'งานสะดวกขึ้นไหม', 0) + tickNote(540, 510, 'ติดขัดน้อยลงไหม', 0) +
       tickNote(540, 640, 'เวลาไปทำงานอื่น', W(18, 'เวลา', -6)) },
@@ -357,12 +359,12 @@ const SHOTS = [
       note(540, 640, 'ขึ้นอยู่กับการออกแบบ', W(20, 'การออกแบบ', -6), { size: 52 }) + note(540, 790, 'และสภาพการทำงานจริง', W(20, 'สภาพ', -6), { size: 52, rot: 2 }) },
 
   { line: 21, cam: [1250, 750, .6], ar: () => note(540, 380, 'แค่ซื้อเครื่องจักรเพิ่ม', W(21, 'ซื้อ', -6), { size: 50 }) + strikeAt(260, 820, 386, W(21, 'ไม่ใช่', 8)) },
-  { line: 22, cam: [1000, 830, 1.1], ar: () => {
+  { line: 22, cam: [1000, 830, 1.1], pic: 'photos/p21233682_1.jpg', ar: () => {
       const t = W(22, 'ตรงจุด', -8);
       return `<g data-a="pop" data-t="${t}" data-cx="540" data-cy="780"><circle cx="540" cy="780" r="190" fill="none" stroke="${OR}" stroke-width="14"/>
           <circle cx="540" cy="780" r="110" fill="none" stroke="${OR}" stroke-width="12"/><circle cx="540" cy="780" r="38" fill="${OR}"/></g>` +
         note(540, 380, 'แก้ปัญหาให้ตรงจุด', t + 4); } },
-  { line: 23, cam: [1480, 800, .55], ar: () => note(540, 380, 'แก้ได้ถูกจุด', W(23, 'ถูกจุด', -6)) },
+  { line: 23, cam: [1480, 800, .55], pic: 'photos/p21233694_1.jpg', ar: () => note(540, 380, 'แก้ได้ถูกจุด', W(23, 'ถูกจุด', -6)) },
   { line: 24, cam: [1250, 720, .52], ar: () => {
       const t = W(24, 'ประโยชน์', -8);
       return `<g data-a="rise" data-t="${t}"><path d="M540,980 L540,640 M440,740 L540,640 L640,740" fill="none" stroke="${OR}" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/></g>` +
@@ -513,6 +515,11 @@ function camera(f) {
     for (const v of show) if (!VIS.has(v)) at('shot' + v, 'visibility', 'visible');
     VIS = show;
     animate(k, l);
+    if (s.pic) {
+        const dur = Math.max(1, s.to - s.from), zz = 1.03 + .05 * (l / dur);
+        at('kb' + k, 'opacity', inv(l, 0, 8).toFixed(3));
+        at('kb' + k, 'transform', `translate(540,860) scale(${zz.toFixed(4)}) translate(-540,-860)`);
+    }
     let [cx, cy, z] = camAt(f);
     const ch = chapterState(f);
     let cardA = 0;
