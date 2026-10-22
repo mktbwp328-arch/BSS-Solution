@@ -1,0 +1,17 @@
+{
+  "name": "cad",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "replicad": "^1.1.0",
+    "replicad-opencascadejs": "^1.1.0"
+  }
+}

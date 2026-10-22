@@ -120,3 +120,7 @@ video/ep09/*.mp4
 video/ep09/*.wav
 video/ep09/*.log
 video/ep09/preview/
+
+# CAD tooling (3D models): deps and generated output stay local
+cad/node_modules/
+cad/out/
